@@ -14,7 +14,8 @@ const supabase = (supabaseUrl && supabaseKey)
   : null;
 
 // Daily Quota Limit per user (Billing Protection)
-const DAILY_QUOTA_LIMIT = 100000; 
+// Quota disabled for now (set to high value)
+const DAILY_QUOTA_LIMIT = 1000000; 
 
 export default async function handler(req, res) {
   // CORS
@@ -165,7 +166,19 @@ async function handleDiscoverProfiles({ category, language }) {
       required: ["name", "title", "description", "region", "era", "values"]
     }
   };
-  const prompt = `Generate a list of 5 inspiring individuals in "${category}". Language: ${language}. Focus on diversity.`;
+  
+  // Updated prompt to enforce geography and era variety
+  const prompt = `
+    Generate a list of 5 inspiring individuals in the category: "${category}". 
+    Language: ${language}.
+    
+    CRITICAL REQUIREMENTS:
+    1. Diversity is mandatory. Focus on diversity in gender, culture, and region. Include individuals from at least 3 different continents (e.g., Asia, Africa, South America, Europe).
+    2. Era variety is mandatory. HISTORICAL SPREAD: 1 Ancient, 1 Middle Ages, 1 Early Modern, 2 Modern.
+    3. Do not list only Western/European figures.
+    4. The "values" field should list 3 key virtues they embody.
+  `;
+  
   const response = await genAI.models.generateContent({
     model,
     contents: prompt,
@@ -204,7 +217,35 @@ async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc
     },
     required: ["english", "hindi", "illustrationPrompt", "geography"]
   };
-  const prompt = `Write a story about ${profile.name}. English Style: ${englishStyleName}. Hindi Style: ${hindiStyleName}.`;
+  
+  const prompt = `
+    Write a biographical story for children about ${profile.name} (${profile.title}) from ${profile.region} (${profile.era}).
+    
+    I need TWO versions of the story.
+    
+    1. **English Version**:
+       - Style: Emulate the writing style of **${englishStyleName}**.
+       - Characteristics: ${englishStyleDesc}
+       - Tone: Inspiring, warm.
+    
+    2. **Hindi Version**:
+       - Style: Emulate the famous writing style of **${hindiStyleName}**.
+       - Characteristics: ${hindiStyleDesc}
+       - **CRITICAL**: Do NOT translate the English story. Write a completely independent retelling of the same biography.
+       - Use the specific vocabulary, metaphors, and sentence cadence typical of ${hindiStyleName}.
+       - The content structure should be similar, but the phrasing must be unique to the Hindi literary style.
+    
+    Structure for both:
+    1. Title: Captivating.
+    2. Introduction: Who they are.
+    3. Main Story: Early life, challenges, turning points, and how they upheld values like ${profile.values.join(", ")}.
+    4. Value Reflection: A summary lesson.
+
+    Additionally, provide:
+    - A prompt for a main illustration scene.
+    - A geography section with a fun fact about the natural world of ${profile.region} and a prompt to generate an illustrated map.
+  `;
+  
   const response = await genAI.models.generateContent({
     model,
     contents: prompt,
@@ -219,33 +260,76 @@ async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc
 async function handleDiscoverConcepts({ field }) {
   const model = "gemini-2.5-flash";
   const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, field: { type: Type.STRING }, era: { type: Type.STRING }, description: { type: Type.STRING }, tags: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["name", "field", "era", "description", "tags"] } };
-  const response = await genAI.models.generateContent({ model, contents: `Suggest 5 scientific concepts in ${field}`, config: { responseMimeType: "application/json", responseSchema: schema } });
+  
+  const prompt = `
+    Suggest 5 scientific concepts or discoveries in the field: "${field}".
+    
+    CRITICAL REQUIREMENTS:
+    1. Include at least one discovery from non-Western science (e.g., Islamic Golden Age, Ancient India/China).
+    2. Include a mix of foundational discoveries (old) and modern breakthroughs.
+    3. Focus on the story behind the concept suitable for children.
+  `;
+
+  const response = await genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
   return JSON.parse(response.text);
 }
 
 async function handleGenerateScienceEntry({ item }) {
   const model = "gemini-2.5-flash";
   const schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, conceptDefinition: { type: Type.STRING }, humanStory: { type: Type.STRING }, experimentOrActivity: { type: Type.STRING }, sources: { type: Type.ARRAY, items: { type: Type.STRING } }, illustrationPrompt: { type: Type.STRING } }, required: ["title", "conceptDefinition", "humanStory", "experimentOrActivity", "sources", "illustrationPrompt"] };
-  const response = await genAI.models.generateContent({ model, contents: `Write entry about ${item.name}`, config: { responseMimeType: "application/json", responseSchema: schema } });
+  
+  const prompt = `
+    Write a children's science entry about: ${item.name}.
+    Field: ${item.field}.
+    Era: ${item.era}.
+    Description: ${item.description}.
+    Audience: Children 8-15.
+    Tone: Excited, curious, factual.
+    Focus on the narrative of how it was discovered. How it is useful for humanity.
+  `;
+  
+  const response = await genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
   return JSON.parse(response.text);
 }
 
 async function handleDiscoverPhilosophies({ theme }) {
   const model = "gemini-2.5-flash";
   const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, origin: { type: Type.STRING }, era: { type: Type.STRING }, coreIdea: { type: Type.STRING }, tags: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["name", "origin", "era", "coreIdea", "tags"] } };
-  const response = await genAI.models.generateContent({ model, contents: `Suggest 5 philosophy topics regarding ${theme}`, config: { responseMimeType: "application/json", responseSchema: schema } });
+  
+  const prompt = `
+    Suggest 5 philosophy topics regarding "${theme}".
+    
+    CRITICAL REQUIREMENTS:
+    1. You MUST provide a mix of Eastern (Indian, Chinese, Japanese) and Western (Greek, European) schools of thought.
+    2. Do not limit to just one region.
+    3. Ensure the ideas can be simplified for a younger audience and help them understand development background and its impact afterwords.
+  `;
+
+  const response = await genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
   return JSON.parse(response.text);
 }
 
 async function handleGeneratePhilosophyEntry({ item }) {
   const model = "gemini-2.5-flash";
   const schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, coreIdeaExplanation: { type: Type.STRING }, historicalEpisode: { type: Type.STRING }, modernrelevance: { type: Type.STRING }, sources: { type: Type.ARRAY, items: { type: Type.STRING } }, illustrationPrompt: { type: Type.STRING } }, required: ["title", "coreIdeaExplanation", "historicalEpisode", "modernrelevance", "sources", "illustrationPrompt"] };
-  const response = await genAI.models.generateContent({ model, contents: `Write entry about ${item.name}`, config: { responseMimeType: "application/json", responseSchema: schema } });
+  
+  const prompt = `
+    Write a children's philosophy entry about: ${item.name}.
+    Origin: ${item.origin}.
+    Era: ${item.era}.
+    Core Idea: ${item.coreIdea}.
+    
+    Simplify the complex thought into a relatable lesson.
+  `;
+  
+  const response = await genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
   return JSON.parse(response.text);
 }
 
 async function handleGenerateImage({ prompt, isMap }) {
-  const styleSuffix = isMap ? " -- illustrated map style" : " -- children's book style";
+  const styleSuffix = isMap  ? " -- illustrated map style, colorful, educational, cute icons, parchment background, high quality"
+    : " -- warm colors, children's book illustration style, high quality, artistic, detailed";
+  
   try {
     const response = await genAI.models.generateImages({
       model: 'imagen-4.0-generate-001',
