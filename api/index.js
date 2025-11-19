@@ -14,8 +14,8 @@ const supabase = (supabaseUrl && supabaseKey)
   : null;
 
 // Daily Quota Limit per user (Billing Protection)
-// Quota disabled for now (set to high value)
-const DAILY_QUOTA_LIMIT = 1000000; 
+// Quota effectively disabled by removing the enforcement logic below
+const DAILY_QUOTA_LIMIT = 999999999; 
 
 export default async function handler(req, res) {
   // CORS
@@ -66,19 +66,20 @@ export default async function handler(req, res) {
 
         // Handle date reset
         const today = new Date().toISOString().split('T')[0];
-        let currentUsage = profile.daily_usage || 0;
+        // let currentUsage = profile.daily_usage || 0;
 
         if (profile.last_reset !== today) {
             // Reset quota for new day
             await supabase.from('user_profiles').update({ daily_usage: 0, last_reset: today }).eq('id', userId);
-            currentUsage = 0;
+            // currentUsage = 0;
         } 
 
-        if (currentUsage >= DAILY_QUOTA_LIMIT) {
-            return res.status(429).json({ 
-                error: `Daily limit of ${DAILY_QUOTA_LIMIT} stories reached. Please try again tomorrow.` 
-            });
-        }
+        // BLOCKING LOGIC REMOVED TO ALLOW FREE CREATION
+        // if (currentUsage >= DAILY_QUOTA_LIMIT) {
+        //     return res.status(429).json({ 
+        //         error: `Daily limit of ${DAILY_QUOTA_LIMIT} stories reached. Please try again tomorrow.` 
+        //     });
+        // }
     }
   } else if (!supabase) {
       // Local/Dev mode without DB
