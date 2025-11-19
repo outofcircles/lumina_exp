@@ -14,7 +14,7 @@ const supabase = (supabaseUrl && supabaseKey)
   : null;
 
 // Daily Quota Limit per user (Billing Protection)
-const DAILY_QUOTA_LIMIT = 10; 
+const DAILY_QUOTA_LIMIT = 100000; 
 
 export default async function handler(req, res) {
   // CORS
