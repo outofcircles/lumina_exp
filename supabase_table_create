@@ -1,0 +1,34 @@
+-- 1. Table for User Quotas (Billing Protection)
+create table user_profiles (
+  id uuid references auth.users not null primary key,
+  daily_usage int default 0,
+  last_reset date default current_date
+);
+
+-- 2. Table for Shared Stories (The Library)
+create table shared_stories (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamptz default now(),
+  created_by uuid references auth.users,
+  type text,
+  item_data jsonb,
+  content jsonb,
+  metadata jsonb
+);
+
+-- 3. Table for Caching API responses (Speed up common requests)
+create table cached_content (
+  hash text primary key,
+  created_at timestamptz default now(),
+  content jsonb,
+  type text
+);
+
+-- 4. Security Policies (Row Level Security)
+alter table shared_stories enable row level security;
+create policy "Public read access" on shared_stories for select using (true);
+create policy "Users can insert their own" on shared_stories for insert with check (auth.uid() = created_by);
+create policy "Users can delete their own" on shared_stories for delete using (auth.uid() = created_by);
+
+alter table user_profiles enable row level security;
+create policy "Users can read own profile" on user_profiles for select using (auth.uid() = id);
