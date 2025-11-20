@@ -1,6 +1,5 @@
-
 import { Profile, Story, Language, ScienceItem, ScienceEntry, PhilosophyItem, PhilosophyEntry } from "../types";
-import { validateContentSafety, SafetyError } from "./safety";
+import { validateContentSafety, SafetyError, sanitizeText } from "./safety";
 import { checkRateLimit } from "./rateLimit";
 import { supabase } from "./supabaseClient";
 
@@ -38,12 +37,34 @@ const callBackend = async (action: string, payload: any) => {
   return await response.json();
 };
 
+// --- NEW HELPER: Recursively sanitize object content ---
+const recursiveSanitize = (data: any): any => {
+  if (typeof data === 'string') {
+    return sanitizeText(data);
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => recursiveSanitize(item));
+  }
+  if (typeof data === 'object' && data !== null) {
+    const sanitizedObj: any = {};
+    for (const key in data) {
+      sanitizedObj[key] = recursiveSanitize(data[key]);
+    }
+    return sanitizedObj;
+  }
+  return data;
+};
+
 // --- EXPORTED FUNCTIONS ---
-// All below remain identical signature, just using the updated callBackend
 
 export const discoverProfiles = async (category: string, language: Language): Promise<Profile[]> => {
-  const data = await callBackend('discoverProfiles', { category, language });
-  if (!validateContentSafety(data)) throw new SafetyError("Content blocked by safety filters.");
+  let data = await callBackend('discoverProfiles', { category, language });
+  
+  // If safety check fails, sanitize instead of throwing error
+  if (!validateContentSafety(data)) {
+    console.warn("Unsafe content detected in profiles. Sanitizing...");
+    data = recursiveSanitize(data);
+  }
   return data;
 };
 
@@ -54,47 +75,73 @@ export const generateStory = async (
   hindiStyleName: string,
   hindiStyleDesc: string
 ): Promise<Story> => {
-  const result = await callBackend('generateStory', {
+  let result = await callBackend('generateStory', {
     profile,
     englishStyleName,
     englishStyleDesc,
     hindiStyleName,
     hindiStyleDesc
   });
-  if (!validateContentSafety(result)) throw new SafetyError("Story content blocked by safety filters.");
+
+  if (!validateContentSafety(result)) {
+    console.warn("Story content blocked by strict safety filters. Sanitizing...");
+    // This will strip only the offending sentences from mainBody, introduction, etc.
+    result = recursiveSanitize(result);
+  }
   return result as Story;
 };
 
 export const discoverConcepts = async (field: string): Promise<ScienceItem[]> => {
-  const data = await callBackend('discoverConcepts', { field });
-  if (!validateContentSafety(data)) throw new SafetyError("Concepts blocked by safety filters.");
+  let data = await callBackend('discoverConcepts', { field });
+  if (!validateContentSafety(data)) {
+    console.warn("Concepts blocked by strict safety filters. Sanitizing...");
+    data = recursiveSanitize(data);
+  }
   return data;
 };
 
 export const generateScienceEntry = async (item: ScienceItem): Promise<ScienceEntry> => {
-  const data = await callBackend('generateScienceEntry', { item });
-  if (!validateContentSafety(data)) throw new SafetyError("Science entry blocked by safety filters.");
+  let data = await callBackend('generateScienceEntry', { item });
+  if (!validateContentSafety(data)) {
+    console.warn("Science entry blocked by strict safety filters. Sanitizing...");
+    data = recursiveSanitize(data);
+  }
   return data;
 };
 
 export const discoverPhilosophies = async (theme: string): Promise<PhilosophyItem[]> => {
-  const data = await callBackend('discoverPhilosophies', { theme });
-  if (!validateContentSafety(data)) throw new SafetyError("Philosophy list blocked by safety filters.");
+  let data = await callBackend('discoverPhilosophies', { theme });
+  if (!validateContentSafety(data)) {
+    console.warn("Philosophy list blocked by strict safety filters. Sanitizing...");
+    data = recursiveSanitize(data);
+  }
   return data;
 };
 
 export const generatePhilosophyEntry = async (item: PhilosophyItem): Promise<PhilosophyEntry> => {
-  const data = await callBackend('generatePhilosophyEntry', { item });
-  if (!validateContentSafety(data)) throw new SafetyError("Philosophy entry blocked by safety filters.");
+  let data = await callBackend('generatePhilosophyEntry', { item });
+  if (!validateContentSafety(data)) {
+    console.warn("Philosophy entry blocked by strict safety filters. Sanitizing...");
+    data = recursiveSanitize(data);
+  }
   return data;
 };
 
 export const generateStoryImage = async (prompt: string, isMap: boolean = false): Promise<string | undefined> => {
   try { checkRateLimit(); } catch (e) { return undefined; }
-  if (!validateContentSafety(prompt)) return `https://picsum.photos/800/600?grayscale&blur=2`;
+  
+  // For images, if the prompt is unsafe, sanitize it. 
+  // If the sanitized prompt is empty, fallback to placeholder.
+  let safePrompt = prompt;
+  if (!validateContentSafety(safePrompt)) {
+      safePrompt = sanitizeText(safePrompt);
+      if (!safePrompt || safePrompt.trim().length < 5) {
+          return `https://picsum.photos/800/600?grayscale&blur=2`;
+      }
+  }
 
   try {
-    const imageUrl = await callBackend('generateImage', { prompt, isMap });
+    const imageUrl = await callBackend('generateImage', { prompt: safePrompt, isMap });
     return imageUrl;
   } catch (error) {
     return `https://picsum.photos/800/600?grayscale&blur=2`;
@@ -103,10 +150,16 @@ export const generateStoryImage = async (prompt: string, isMap: boolean = false)
 
 export const generateStoryAudio = async (text: string, language: Language): Promise<string | undefined> => {
   try { checkRateLimit(); } catch (e) { return undefined; }
-  if (!validateContentSafety(text)) return undefined;
+  
+  // For audio, sanitize text so we don't generate speech for prohibited words
+  let safeText = text;
+  if (!validateContentSafety(safeText)) {
+      safeText = sanitizeText(safeText);
+      if (!safeText || safeText.trim().length === 0) return undefined;
+  }
 
   try {
-    return await callBackend('generateAudio', { text });
+    return await callBackend('generateAudio', { text: safeText });
   } catch (error) {
     return undefined;
   }
