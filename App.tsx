@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CategoryGrid } from './components/CategoryGrid';
 import { ItemPicker } from './components/ProfilePicker';
@@ -93,7 +92,6 @@ const App: React.FC = () => {
       } else if (e instanceof SafetyError) {
           setError({ message: e.message, type: 'safety' });
       } else {
-          // Identify specific API errors to show better messages
           const msg = e.message?.includes('Timeout') || 
                       e.message?.includes('too long') || 
                       e.message?.includes('overloaded') || 
@@ -169,9 +167,8 @@ const App: React.FC = () => {
         const story = await generateStory(profile, englishStyle.name, englishStyle.description, hindiStyle.name, hindiStyle.description);
         setGeneratedContent(story);
         setLoadingContent(false);
-        refreshQuota(); // Update quota usage display
+        refreshQuota();
 
-        // Save to Shared Library immediately
         if (selectedCategory) {
              await saveItemToArchive(AppMode.STORIES, profile, story, selectedCategory, { styleName: englishStyle.name, personaName: englishStyle.persona, primaryLanguage: language });
              refreshLibrary();
@@ -249,74 +246,74 @@ const App: React.FC = () => {
   if (!session) return <LoginView onLoginSuccess={() => {}} />;
 
   return (
-    <div className="min-h-screen bg-parchment font-sans selection:bg-gold selection:text-white pb-20 flex flex-col">
+    <div className="min-h-screen bg-parchment font-sans selection:bg-gold selection:text-white pb-20 flex flex-col antialiased">
       
       {/* Header */}
-      <header className="bg-white border-b border-parchment-dark sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+      <header className="bg-white border-b border-parchment-dark sticky top-0 z-50 shadow-sm backdrop-blur-md bg-white/95 supports-[backdrop-filter]:bg-white/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between gap-4 py-4">
             
-            <div onClick={resetToHome} className="flex items-center gap-2 cursor-pointer group shrink-0">
-              <div className="w-8 h-8 bg-gold rounded-lg flex items-center justify-center text-white transform group-hover:rotate-12 transition-transform">
-                <Sparkles size={18} fill="currentColor" />
+            <div onClick={resetToHome} className="flex items-center gap-3 cursor-pointer group shrink-0">
+              <div className="w-10 h-10 bg-gold rounded-xl flex items-center justify-center text-white shadow-md transform group-hover:rotate-12 transition-transform duration-300">
+                <Sparkles size={20} fill="currentColor" />
               </div>
-              <h1 className="font-serif font-bold text-xl text-ink tracking-tight hidden sm:block">Lumina</h1>
+              <h1 className="font-serif font-bold text-2xl text-ink tracking-tight hidden sm:block">Lumina</h1>
             </div>
             
-            <div className="flex bg-gray-100 p-1 rounded-xl overflow-hidden shrink-0 max-w-[40vw] overflow-x-auto hide-scrollbar">
-              <button onClick={() => handleTabChange(AppMode.STORIES)} className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-2 ${mode === AppMode.STORIES ? 'bg-white text-ink shadow-sm' : 'text-gray-500'}`}>
-                <Sparkles size={14} /> <span className="hidden sm:inline">Stories</span>
+            <div className="flex bg-gray-100/80 p-1.5 rounded-2xl overflow-hidden shrink-0 max-w-[50vw] overflow-x-auto hide-scrollbar">
+              <button onClick={() => handleTabChange(AppMode.STORIES)} className={`px-4 py-2 text-sm font-bold rounded-xl flex items-center gap-2 transition-all ${mode === AppMode.STORIES ? 'bg-white text-ink shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                <Sparkles size={16} /> <span className="hidden sm:inline">Stories</span>
               </button>
-              <button onClick={() => handleTabChange(AppMode.CONCEPTS)} className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-2 ${mode === AppMode.CONCEPTS ? 'bg-white text-ink shadow-sm' : 'text-gray-500'}`}>
-                <Atom size={14} /> <span className="hidden sm:inline">Science</span>
+              <button onClick={() => handleTabChange(AppMode.CONCEPTS)} className={`px-4 py-2 text-sm font-bold rounded-xl flex items-center gap-2 transition-all ${mode === AppMode.CONCEPTS ? 'bg-white text-ink shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                <Atom size={16} /> <span className="hidden sm:inline">Science</span>
               </button>
-              <button onClick={() => handleTabChange(AppMode.PHILOSOPHIES)} className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-2 ${mode === AppMode.PHILOSOPHIES ? 'bg-white text-ink shadow-sm' : 'text-gray-500'}`}>
-                <Scale size={14} /> <span className="hidden sm:inline">Wisdom</span>
+              <button onClick={() => handleTabChange(AppMode.PHILOSOPHIES)} className={`px-4 py-2 text-sm font-bold rounded-xl flex items-center gap-2 transition-all ${mode === AppMode.PHILOSOPHIES ? 'bg-white text-ink shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                <Scale size={16} /> <span className="hidden sm:inline">Wisdom</span>
               </button>
             </div>
             
             <div className="flex items-center gap-3 shrink-0">
                {/* Quota Indicator */}
-               <div className="hidden md:flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full border border-blue-100" title="Daily Generation Limit">
-                  <Battery size={14} className={quota.usage >= quota.limit ? 'text-red-500' : 'text-blue-500'} />
+               <div className="hidden md:flex items-center gap-2 text-xs font-bold px-4 py-2 bg-blue-50 text-blue-700 rounded-full border border-blue-100 shadow-sm" title="Daily Generation Limit">
+                  <Battery size={16} className={quota.usage >= quota.limit ? 'text-red-500' : 'text-blue-500'} />
                   <span>{quota.limit - quota.usage} left</span>
                </div>
 
                <button 
                  onClick={() => { setStep(AppStep.ARCHIVE_LIST); setError(null); }}
-                 className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-bold transition-colors ${step === AppStep.ARCHIVE_LIST ? 'bg-ink text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all border border-transparent ${step === AppStep.ARCHIVE_LIST ? 'bg-ink text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 hover:border-gray-200'}`}
                >
                   <Library size={18} />
-                  <span className="hidden sm:inline">Library</span>
+                  <span className="hidden lg:inline">Library</span>
                </button>
                
-               <button onClick={handleLogout} className="p-2 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Logout">
-                 <LogOut size={18} />
+               <button onClick={handleLogout} className="p-2.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all" title="Logout">
+                 <LogOut size={20} />
                </button>
             </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10 flex-1 w-full">
         {error && (
-            <div className={`max-w-4xl mx-auto mb-8 p-4 border rounded-xl flex items-start gap-3 animate-fadeIn shadow-sm ${error.type === 'rate_limit' ? 'bg-orange-50 border-orange-100 text-orange-800' : 'bg-red-50 border-red-100 text-red-800'}`}>
-                <AlertTriangle className="shrink-0 mt-0.5" size={20} />
+            <div className={`max-w-4xl mx-auto mb-10 p-5 border rounded-2xl flex items-start gap-4 animate-fadeIn shadow-sm ${error.type === 'rate_limit' ? 'bg-orange-50 border-orange-100 text-orange-800' : 'bg-red-50 border-red-100 text-red-800'}`}>
+                <AlertTriangle className="shrink-0 mt-0.5" size={22} />
                 <div className="flex-1">
-                    <h3 className="font-bold text-sm">{error.type === 'rate_limit' ? 'Quota Reached' : 'Error'}</h3>
-                    <p className="text-sm opacity-90 mt-0.5">{error.message}</p>
+                    <h3 className="font-bold text-base">{error.type === 'rate_limit' ? 'Quota Reached' : 'Something went wrong'}</h3>
+                    <p className="text-sm opacity-90 mt-1 leading-relaxed">{error.message}</p>
                 </div>
-                <button onClick={() => setError(null)}><X size={16} /></button>
+                <button onClick={() => setError(null)} className="p-1 hover:bg-black/5 rounded"><X size={18} /></button>
             </div>
         )}
 
         {step === AppStep.CATEGORY_SELECT && (
           <div className="animate-fadeIn w-full">
-             <div className="text-center max-w-3xl mx-auto mb-16">
-                <h2 className="text-4xl md:text-6xl font-serif font-bold text-ink mb-6 tracking-tight">
+             <div className="text-center max-w-3xl mx-auto mb-20 pt-8">
+                <h2 className="text-5xl sm:text-6xl md:text-7xl font-serif font-medium text-ink mb-8 tracking-tight leading-[1.1]">
                   {mode === AppMode.STORIES && "Discover a world of heroes."}
                   {mode === AppMode.CONCEPTS && "Explore the wonders of science."}
                   {mode === AppMode.PHILOSOPHIES && "Understand the great ideas."}
                 </h2>
-                <p className="text-lg md:text-xl text-gray-500 leading-relaxed max-w-2xl mx-auto">
+                <p className="text-xl sm:text-2xl text-gray-500 leading-relaxed max-w-2xl mx-auto font-light">
                    Select a path below to begin a journey of discovery, tailored for young minds.
                 </p>
              </div>
@@ -326,9 +323,9 @@ const App: React.FC = () => {
 
         {step === AppStep.ITEM_SELECT && (
           <div className="animate-fadeIn">
-            <div className="flex items-center mb-8">
-               <button onClick={resetToHome} className="text-gray-400 hover:text-ink transition-colors text-sm font-bold uppercase">Categories</button>
-               <span className="mx-2 text-gray-300">/</span>
+            <div className="flex items-center mb-10 text-sm sm:text-base">
+               <button onClick={resetToHome} className="text-gray-400 hover:text-ink transition-colors font-bold uppercase tracking-wider">Categories</button>
+               <span className="mx-3 text-gray-300">/</span>
                <span className="font-bold uppercase tracking-wider text-gold">{getCurrentCategoryObj().label}</span>
             </div>
             <ItemPicker items={items} onSelect={handleItemSelect} loading={loadingItems} mode={mode} />
@@ -345,17 +342,17 @@ const App: React.FC = () => {
 
         {step === AppStep.CONTENT_VIEW && loadingContent && (
            <div className="flex flex-col items-center justify-center min-h-[60vh] animate-pulse">
-              <BookOpen size={64} className="text-gold mb-6 animate-bounce" />
-              <h3 className="text-2xl font-serif text-ink mb-2">Generating content...</h3>
-              <p className="text-gray-400 text-sm">This counts towards your daily quota.</p>
+              <BookOpen size={80} className="text-gold mb-8 animate-bounce opacity-80" strokeWidth={1.5} />
+              <h3 className="text-3xl font-serif text-ink mb-3 font-medium">Generating content...</h3>
+              <p className="text-gray-400 text-base font-medium">This counts towards your daily quota.</p>
            </div>
         )}
 
         {step === AppStep.ARCHIVE_LIST && (
-            <div className="animate-fadeIn">
-                <div className="text-center max-w-2xl mx-auto mb-12">
-                    <h2 className="text-3xl md:text-4xl font-serif font-bold text-ink mb-2">Shared Library</h2>
-                    <p className="text-gray-600">Stories collected by your circle of friends.</p>
+            <div className="animate-fadeIn pt-6">
+                <div className="text-center max-w-2xl mx-auto mb-16">
+                    <h2 className="text-4xl md:text-5xl font-serif font-bold text-ink mb-4 tracking-tight">Shared Library</h2>
+                    <p className="text-xl text-gray-500 leading-relaxed">Stories collected by your circle of friends.</p>
                 </div>
                 <ArchiveGrid 
                     stories={archivedStories}
@@ -368,11 +365,11 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <footer className="bg-white border-t border-gray-100 py-6 mt-8">
-         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-gray-400 text-xs">
-            <div className="flex items-center gap-6">
+      <footer className="bg-white border-t border-gray-100 py-8 mt-12">
+         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6 text-gray-400 text-sm font-medium">
+            <div className="flex items-center gap-8">
                <span>&copy; 2025 Lumina</span>
-               <span className="flex items-center gap-1"><ShieldCheck size={12} /> Private Instance</span>
+               <span className="flex items-center gap-1.5 text-gray-300"><ShieldCheck size={14} /> Private Instance</span>
             </div>
          </div>
       </footer>
