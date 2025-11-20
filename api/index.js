@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
@@ -21,30 +20,32 @@ const supabase = (supabaseUrl && supabaseKey)
 // Daily Quota Limit per user (Billing Protection)
 const DAILY_QUOTA_LIMIT = 999999999; 
 // Increment this version to invalidate all previous cached content
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v4-improved-prompts";
 
-// --- RETRY HELPER (UPDATED) ---
+// --- RETRY HELPER ---
 const runWithRetry = async (fn, retries = 3) => {
   for (let i = 0; i < retries; i++) {
     try {
       return await fn();
     } catch (error) {
-      // Check for 503 (Service Unavailable) OR 429 (Too Many Requests)
+      // Detect 429 (Rate Limit) AND 503 (Overload)
       const status = error.status || error.response?.status;
-      const isOverloaded = status === 503 || (error.message && error.message.toLowerCase().includes('overloaded'));
-      const isRateLimited = status === 429 || (error.message && error.message.toLowerCase().includes('resource exhausted'));
+      const message = error.message?.toLowerCase() || '';
       
-      // If it's not a recoverable error, or we ran out of retries, throw it
-      if ((!isOverloaded && !isRateLimited) || i === retries - 1) {
+      const isRateLimit = status === 429 || message.includes('usage limit') || message.includes('resource exhausted');
+      const isOverloaded = status === 503 || message.includes('overloaded');
+
+      // If it's not a recoverable error, throw immediately
+      if ((!isRateLimit && !isOverloaded) || i === retries - 1) {
         throw error;
       }
-      
-      // Exponential backoff: 2s, 4s, 8s (Increased timing for 429s)
+
+      // Smart Backoff: Wait longer for Rate Limits (429)
       // Rate limits usually require a longer wait than 503s
-      const baseDelay = isRateLimited ? 2000 : 1000; 
-      const delay = baseDelay * (Math.pow(2, i));
+      const baseDelay = isRateLimit ? 2000 : 1000; 
+      const delay = baseDelay * Math.pow(2, i); 
       
-      console.warn(`Gemini ${status || 'Error'} hit. Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
+      console.warn(`Gemini ${status || 'Error'} Hit. Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -84,28 +85,17 @@ export default async function handler(req, res) {
     // Check Quota for heavy generation actions
     const quotaActions = ['generateStory', 'generateScienceEntry', 'generatePhilosophyEntry'];
     if (quotaActions.includes(action)) {
-        // Fetch user profile
-        let { data: profile, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
+        let { data: profile } = await supabase.from('user_profiles').select('*').eq('id', userId).single();
         
-        // If profile doesn't exist yet, create it or treat as 0
         if (!profile) {
            profile = { daily_usage: 0, last_reset: new Date().toISOString().split('T')[0] };
         }
 
-        // Handle date reset
         const today = new Date().toISOString().split('T')[0];
-
         if (profile.last_reset !== today) {
-            // Reset quota for new day
             await supabase.from('user_profiles').update({ daily_usage: 0, last_reset: today }).eq('id', userId);
         } 
     }
-  } else if (!supabase) {
-      console.warn("Supabase not configured in API, skipping Auth/Quota checks.");
   }
 
   try {
@@ -114,18 +104,9 @@ export default async function handler(req, res) {
     let cacheHash = null;
 
     if (supabase && cacheableActions.includes(action)) {
-       // Include CACHE_VERSION in hash to allow cache busting
        cacheHash = crypto.createHash('sha256').update(action + JSON.stringify(payload) + CACHE_VERSION).digest('hex');
-       
-       const { data: cachedData } = await supabase
-         .from('cached_content')
-         .select('content')
-         .eq('hash', cacheHash)
-         .single();
-
-       if (cachedData) {
-         return res.status(200).json(cachedData.content);
-       }
+       const { data: cachedData } = await supabase.from('cached_content').select('content').eq('hash', cacheHash).single();
+       if (cachedData) return res.status(200).json(cachedData.content);
     }
 
     // 2. Generate
@@ -138,7 +119,6 @@ export default async function handler(req, res) {
       case 'discoverPhilosophies': result = await handleDiscoverPhilosophies(payload); break;
       case 'generatePhilosophyEntry': result = await handleGeneratePhilosophyEntry(payload); break;
       case 'generateImage': result = await handleGenerateImage(payload); break;
-      case 'generateAudio': result = await handleGenerateAudio(payload); break;
       case 'getUserQuota': 
          if (!userId) return res.status(200).json({ usage: 0, limit: DAILY_QUOTA_LIMIT });
          const { data: p } = await supabase.from('user_profiles').select('daily_usage').eq('id', userId).single();
@@ -146,7 +126,7 @@ export default async function handler(req, res) {
       default: throw new Error('Invalid action');
     }
 
-    // 3. Post-Generation Updates (Quota & Cache)
+    // 3. Post-Generation Updates
     if (supabase) {
         if (cacheHash) {
             supabase.from('cached_content').insert({ hash: cacheHash, content: result, type: action }).then(() => {});
@@ -189,27 +169,23 @@ async function handleDiscoverProfiles({ category, language }) {
   const prompt = `
     Generate a list of 5 inspiring individuals in the category: "${category}". 
     Language: ${language}.
-    
     CRITICAL REQUIREMENTS:
-    1. Diversity is mandatory. Focus on diversity in gender, culture, and region. Include individuals from at least 3 different continents (e.g., Asia, Africa, North America, South America, Europe).
-    2. Era variety is mandatory. HISTORICAL SPREAD: 1 Ancient, 1 Middle Ages, 1 Early Modern, 2 Modern.
-    3. The "values" field should list 3 key virtues they embody.
+    1. Diversity is mandatory (3+ continents).
+    2. Era variety is mandatory (Ancient to Modern).
+    3. "values" field must list 3 key virtues.
   `;
   
   const response = await runWithRetry(() => genAI.models.generateContent({
     model,
     contents: prompt,
-    config: { 
-      responseMimeType: "application/json", 
-      responseSchema: schema,
-      temperature: 0.4 // Stabilize output
-    }
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 }
   }));
   return JSON.parse(response.text);
 }
 
 async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc, hindiStyleName, hindiStyleDesc }) {
   const model = "gemini-2.5-flash";
+  
   const storyContentSchema = {
     type: Type.OBJECT,
     properties: {
@@ -260,28 +236,37 @@ async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc
     Structure for both:
     1. Title: Captivating.
     2. Introduction: Who they are.
-    3. Main Story: Early life, challenges, turning points, and how they upheld values like ${profile.values.join(", ")}. How their contribution impacted the world.
+    3. Main Story: Early life, challenges, turning points, and how they upheld values like ${profile.values.join(", ")}. How their contribution impacted the world. Identify real incidents from their lives.
     4. Value Reflection: A summary lesson.
 
     Additionally, provide:
     - A prompt for a main illustration scene (artistic, detailed).
     - A geography section with a fun fact about ${profile.region} and a map prompt.
+    
+    CRITICAL CONSTRAINT: 
+    - Word count must be between 800-900 words per language.
+    - Use STANDARD English. No phonetic spelling.
   `;
   
   const response = await runWithRetry(() => genAI.models.generateContent({
     model,
     contents: prompt,
-    config: { 
-      responseMimeType: "application/json", 
-      responseSchema: schema,
-      temperature: 0.4, // Fixes "Iagine" and weird spelling
-      topP: 0.95,
-      topK: 40
-    }
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4, topP: 0.95 }
   }));
   const result = JSON.parse(response.text);
   result.englishStyle = englishStyleName;
   result.hindiStyle = hindiStyleName;
+
+  // --- AUTO IMAGE GENERATION ---
+  try {
+    const results = await Promise.allSettled([
+        handleGenerateImage({ prompt: result.illustrationPrompt, isMap: false }),
+        handleGenerateImage({ prompt: result.geography.mapPrompt, isMap: true })
+    ]);
+    result.imageUrl = results[0].status === 'fulfilled' ? results[0].value : null;
+    result.mapUrl   = results[1].status === 'fulfilled' ? results[1].value : null;
+  } catch (e) { console.error("Story Image Gen Failed:", e); }
+
   return result;
 }
 
@@ -289,23 +274,14 @@ async function handleDiscoverConcepts({ field }) {
   const model = "gemini-2.5-flash";
   const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, field: { type: Type.STRING }, era: { type: Type.STRING }, description: { type: Type.STRING }, tags: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["name", "field", "era", "description", "tags"] } };
   
-  const prompt = `
-    Suggest 5 scientific concepts or discoveries in the field: "${field}".
-    
-    CRITICAL REQUIREMENTS:
-    1. Include at least one discovery from non-Western science or technology.
-    2. Include a mix of foundational discoveries (old) and modern breakthroughs.
-    3. Focus on the story behind the concept for children and how it was impactful for humanity.
-  `;
-
   const response = await runWithRetry(() => genAI.models.generateContent({ 
     model, 
-    contents: prompt, 
-    config: { 
-      responseMimeType: "application/json", 
-      responseSchema: schema,
-      temperature: 0.4
-    } 
+    contents: `Suggest 5 scientific concepts or discoveries in the field: "${field}".
+    Requirements:
+    1. Include at least one non-Western discovery.
+    2. Mix of foundational and modern breakthroughs.
+    3. Focus on the story behind the concept for children.`, 
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 } 
   }));
   return JSON.parse(response.text);
 }
@@ -316,52 +292,45 @@ async function handleGenerateScienceEntry({ item }) {
   
   const prompt = `
     Write a children's science entry about: ${item.name}.
-    Field: ${item.field}.
-    Era: ${item.era}.
-    Description: ${item.description}.
-    Audience: Children 8-15.
-    Tone: curious, factual.
-    Constraint: Write roughly 900 words.
-    CRITICAL CONSTRAINTS:
-    1. Write in STANDARD English. 
-    2. Do NOT use phonetic spelling (e.g. never write "Iagine" for "Imagine", "Te" for "The").
-    3. Do NOT use heavy dialect or accents.
-    Focus on the narrative of how it was discovered or developed. How it is useful for humanity.
+    Field: ${item.field}. Era: ${item.era}.
+    
+    Content Guide:
+    1. Explain the concept or technology in simple terms.
+    2. Discuss the process of innovation or development of the idea.
+    3. Establish the importance of the concept towards serving humanity.
+    
+    Constraints:
+    - Length: 800-900 words.
+    - Write in STANDARD English.
+    - Do NOT use phonetic spelling (e.g. never write "Iagine" for "Imagine").
+    - Do NOT use heavy dialect or accents.
   `;
-  
+
   const response = await runWithRetry(() => genAI.models.generateContent({ 
     model, 
     contents: prompt, 
-    config: { 
-      responseMimeType: "application/json", 
-      responseSchema: schema,
-      temperature: 0.4 
-    } 
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 } 
   }));
-  return JSON.parse(response.text);
+  const result = JSON.parse(response.text);
+
+  // --- AUTO IMAGE GENERATION ---
+  try {
+      result.imageUrl = await handleGenerateImage({ prompt: result.illustrationPrompt, isMap: false });
+  } catch (e) {
+      console.error("Science Image Gen Failed:", e);
+      result.imageUrl = null;
+  }
+  return result;
 }
 
 async function handleDiscoverPhilosophies({ theme }) {
   const model = "gemini-2.5-flash";
   const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, origin: { type: Type.STRING }, era: { type: Type.STRING }, coreIdea: { type: Type.STRING }, tags: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["name", "origin", "era", "coreIdea", "tags"] } };
   
-  const prompt = `
-    Suggest 5 philosophy topics regarding "${theme}".
-    
-    CRITICAL REQUIREMENTS:
-    1. You MUST provide a mix of Eastern (Indian, Chinese, Japanese) and Western (Greek, European) schools of thought.
-    2. Do not limit to just one region or one era.
-    3. Ensure the ideas are useful, important and interesting for a younger audience.
-  `;
-
   const response = await runWithRetry(() => genAI.models.generateContent({ 
     model, 
-    contents: prompt, 
-    config: { 
-      responseMimeType: "application/json", 
-      responseSchema: schema,
-      temperature: 0.4 
-    } 
+    contents: `Suggest 5 philosophy topics regarding "${theme}". Mix Eastern and Western. Ensure ideas are interesting for a younger audience.`, 
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 } 
   }));
   return JSON.parse(response.text);
 }
@@ -372,67 +341,59 @@ async function handleGeneratePhilosophyEntry({ item }) {
   
   const prompt = `
     Write a children's philosophy entry about: ${item.name}.
-    Origin: ${item.origin}.
-    Era: ${item.era}.
-    Core Idea: ${item.coreIdea}.
-    Constraint: Write roughly 800 words. 
-    The idea is to introduce children about the development of ${item.name} and its positive impact on world.
-    Simplify the complex thought into an interesting lesson.
-    CRITICAL CONSTRAINTS:
-    1. Write in STANDARD English. 
-    2. Do NOT use phonetic spelling (e.g. never write "Iagine" for "Imagine", "Te" for "The").
-    3. Do NOT use heavy dialect or accents.
+    Origin: ${item.origin}. Era: ${item.era}. Core Idea: ${item.coreIdea}.
+    
+    Content Guide:
+    1. Explain the philosophy, idea, or religion in simple and interesting details.
+    2. Create curiosity towards examining the critical nature of ideas.
+    3. Explain how it helped humanity to progress forward.
+    
+    Constraints:
+    - Length: 800-900 words.
+    - Write in STANDARD English.
+    - Do NOT use phonetic spelling.
+    - Do NOT use heavy dialect or accents.
   `;
   
   const response = await runWithRetry(() => genAI.models.generateContent({ 
     model, 
     contents: prompt, 
-    config: { 
-      responseMimeType: "application/json", 
-      responseSchema: schema,
-      temperature: 0.4 
-    } 
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 } 
   }));
-  return JSON.parse(response.text);
+  const result = JSON.parse(response.text);
+
+  // --- AUTO IMAGE GENERATION ---
+  try {
+      result.imageUrl = await handleGenerateImage({ prompt: result.illustrationPrompt, isMap: false });
+  } catch (e) {
+      console.error("Philosophy Image Gen Failed:", e);
+      result.imageUrl = null;
+  }
+  return result;
 }
 
 async function handleGenerateImage({ prompt, isMap }) {
-  const styleSuffix = isMap  ? " -- illustrated map style, colorful, educational, cute icons, parchment background, high quality"
+  const styleSuffix = isMap  
+    ? " -- illustrated map style, colorful, educational, cute icons, parchment background, high quality"
     : " -- warm colors, children's book illustration style, high quality, artistic, detailed, masterpiece";
   
   const fullPrompt = prompt + styleSuffix;
 
   try {
-    // Switching to gemini-2.5-flash-image for better reliability and speed compared to Imagen 4
+    // Note: Ensure your API key has access to 'gemini-2.5-flash-image' or 'gemini-2.0-flash-exp'
     const response = await runWithRetry(() => genAI.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-2.5-flash-image', 
       contents: { parts: [{ text: fullPrompt }] },
-      config: { 
-        responseModalities: [Modality.IMAGE],
-        //temperature: 0.4 
-      },
+      config: { responseModalities: [Modality.IMAGE] },
     }));
     
-    // Extract inline data from the response
     const parts = response.candidates?.[0]?.content?.parts;
     if (parts && parts[0]?.inlineData) {
         return `data:image/jpeg;base64,${parts[0].inlineData.data}`;
     }
     throw new Error("No image data returned");
   } catch (e) {
-    console.error("Image Gen Error:", e);
-    return `https://picsum.photos/800/600?grayscale&blur=2`;
+    console.error("Image Gen Error:", e.message);
+    return `https://placehold.co/800x600?text=${isMap ? 'Map+Unavailable' : 'Image+Unavailable'}`;
   }
-}
-
-async function handleGenerateAudio({ text }) {
-  const model = "gemini-2.5-flash-preview-tts";
-  try {
-      const response = await runWithRetry(() => genAI.models.generateContent({
-        model,
-        contents: [{ parts: [{ text }] }],
-        config: { responseModalities: [Modality.AUDIO], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } },
-      }));
-      return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  } catch (e) { return null; }
 }
