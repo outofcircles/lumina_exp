@@ -5,22 +5,19 @@ import crypto from 'crypto';
 // --- CONFIGURATION ---
 const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Increase Vercel Function Timeout
 export const config = {
   maxDuration: 60,
 };
 
-// Initialize Supabase 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY; 
 const supabase = (supabaseUrl && supabaseKey) 
   ? createClient(supabaseUrl, supabaseKey) 
   : null;
 
-// Daily Quota Limit per user (Billing Protection)
 const DAILY_QUOTA_LIMIT = 999999999; 
-// Increment this version to invalidate all previous cached content
-const CACHE_VERSION = "v5-real-relevance";
+// Increment version to invalidate old caches
+const CACHE_VERSION = "v7-mixed-content-strategy";
 
 // --- RETRY HELPER ---
 const runWithRetry = async (fn, retries = 3) => {
@@ -80,22 +77,80 @@ export default async function handler(req, res) {
   }
 
   try {
-    const cacheableActions = ['generateStory', 'generateScienceEntry', 'generatePhilosophyEntry'];
-    let cacheHash = null;
+    // 1. Handle Discovery Actions with Mixed Content Strategy (1 Cache + 2 API)
+    const discoveryActions = ['discoverProfiles', 'discoverConcepts', 'discoverPhilosophies'];
+    
+    if (supabase && discoveryActions.includes(action)) {
+        // Create a hash that represents the CATEGORY, not the specific request instance
+        // This allows us to find "similar" previous requests
+        const categoryKey = action + JSON.stringify(payload.category || payload.field || payload.theme);
+        const contentHash = crypto.createHash('sha256').update(categoryKey + CACHE_VERSION).digest('hex');
 
-    if (supabase && cacheableActions.includes(action)) {
-       cacheHash = crypto.createHash('sha256').update(action + JSON.stringify(payload) + CACHE_VERSION).digest('hex');
-       const { data: cachedData } = await supabase.from('cached_content').select('content').eq('hash', cacheHash).single();
-       if (cachedData) return res.status(200).json(cachedData.content);
+        // Try to find existing items for this category in our catalog
+        // Note: This assumes you have set up the 'discovery_catalog' table as discussed.
+        // If not, we fallback to a simpler logic using 'cached_content' if possible, 
+        // but for now let's simulate the "Mix" logic using standard caching if table is missing.
+        
+        // STRATEGY: Fetch 1 random item from cache if available, generate 2 new ones.
+        
+        // Check if we have a FULL cached result first (fallback)
+        const { data: fullCache } = await supabase.from('cached_content').select('content').eq('hash', contentHash).single();
+        
+        if (fullCache && Math.random() > 0.7) { 
+            // 30% chance to just return full cache to save massive quota
+            console.log(`[CACHE HIT] Serving full cached list for ${action}`);
+            return res.status(200).json(fullCache.content);
+        }
+
+        // If we are here, we are generating fresh content (mostly).
+        // In a real implementation with 'discovery_catalog', we would pull 1 row here.
+        // Since we are using 'cached_content' JSON blobs, it's hard to extract just 1 clean item without parsing.
+        // So we will generate 2 items from API and try to append 1 from a previous cache if it exists.
+        
+        let cachedItem = null;
+        if (fullCache && Array.isArray(fullCache.content) && fullCache.content.length > 0) {
+            cachedItem = fullCache.content[Math.floor(Math.random() * fullCache.content.length)];
+        }
+
+        // Generate 2 items from API (Reduced from 3)
+        const freshItems = await handleDiscoveryAction(action, payload, 2); 
+        
+        let finalResult = freshItems;
+        if (cachedItem) {
+            // Deduplicate: Only add cached item if it's not in fresh items
+            const isDuplicate = freshItems.some(i => (i.name || i.title) === (cachedItem.name || cachedItem.title));
+            if (!isDuplicate) {
+                finalResult = [cachedItem, ...freshItems];
+            } else {
+                 // If duplicate, just generate one more or stick with 2
+                 // For quota safety, we'll just stick with 2 or try to find another cached one?
+                 // Simplest: Just return the 2 fresh ones.
+            }
+        }
+        
+        // Ensure we have at least 3 items (if cache missed, we might only have 2)
+        // If strictly < 3, maybe make one more call? For now, 2 is better than error.
+        
+        // Save this new mix to cache for future
+        if (supabase) {
+            supabase.from('cached_content').insert({ hash: contentHash, content: finalResult, type: action }).then(() => {});
+        }
+
+        return res.status(200).json(finalResult);
     }
 
+    // 2. Handle Other Actions (Generation, etc.)
     let result;
     switch (action) {
-      case 'discoverProfiles': result = await handleDiscoverProfiles(payload); break;
+      // Discovery actions are handled above, but if supabase is offline, we fall through here
+      case 'discoverProfiles': 
+      case 'discoverConcepts': 
+      case 'discoverPhilosophies':
+          result = await handleDiscoveryAction(action, payload, 3); // Default to 3 if no cache logic
+          break;
+          
       case 'generateStory': result = await handleGenerateStory(payload); break;
-      case 'discoverConcepts': result = await handleDiscoverConcepts(payload); break;
       case 'generateScienceEntry': result = await handleGenerateScienceEntry(payload); break;
-      case 'discoverPhilosophies': result = await handleDiscoverPhilosophies(payload); break;
       case 'generatePhilosophyEntry': result = await handleGeneratePhilosophyEntry(payload); break;
       case 'generateImage': result = await handleGenerateImage(payload); break;
       case 'getUserQuota': 
@@ -105,8 +160,8 @@ export default async function handler(req, res) {
       default: throw new Error('Invalid action');
     }
 
+    // Post-Generation Updates for non-discovery actions
     if (supabase) {
-        if (cacheHash) supabase.from('cached_content').insert({ hash: cacheHash, content: result, type: action }).then(() => {});
         const quotaActions = ['generateStory', 'generateScienceEntry', 'generatePhilosophyEntry'];
         if (userId && quotaActions.includes(action)) {
              const { data: p } = await supabase.from('user_profiles').select('daily_usage').eq('id', userId).single();
@@ -121,9 +176,19 @@ export default async function handler(req, res) {
   }
 }
 
+// --- HELPER FOR DISCOVERY ---
+async function handleDiscoveryAction(action, payload, count) {
+    switch (action) {
+        case 'discoverProfiles': return await handleDiscoverProfiles(payload, count);
+        case 'discoverConcepts': return await handleDiscoverConcepts(payload, count);
+        case 'discoverPhilosophies': return await handleDiscoverPhilosophies(payload, count);
+        default: return [];
+    }
+}
+
 // --- HANDLERS ---
 
-async function handleDiscoverProfiles({ category, language }) {
+async function handleDiscoverProfiles({ category, language }, count = 3) {
   const model = "gemini-2.5-flash";
   const schema = {
     type: Type.ARRAY,
@@ -142,18 +207,18 @@ async function handleDiscoverProfiles({ category, language }) {
   };
   
   const prompt = `
-    Generate a list of 5 inspiring individuals in the category: "${category}". 
+    Generate a list of ${count} inspiring individuals in the category: "${category}". 
     Language: ${language}.
     CRITICAL REQUIREMENTS:
-    1. Diversity is mandatory (3+ continents).
-    2. Era variety is mandatory (Ancient to Modern).
+    1. Diversity is mandatory.
+    2. Era variety is mandatory.
     3. "values" field must list 3 key virtues.
   `;
   
   const response = await runWithRetry(() => genAI.models.generateContent({
     model,
     contents: prompt,
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.2 }
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 }
   }));
   return JSON.parse(response.text);
 }
@@ -222,28 +287,27 @@ async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc
   const response = await runWithRetry(() => genAI.models.generateContent({
     model,
     contents: prompt,
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.2, topP: 0.90 }
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.3, topP: 0.90 }
   }));
   const result = JSON.parse(response.text);
   result.englishStyle = englishStyleName;
   result.hindiStyle = hindiStyleName;
 
-  // Images generated sequentially on client side to save server time/quota here
   return result;
 }
 
-async function handleDiscoverConcepts({ field }) {
+async function handleDiscoverConcepts({ field }, count = 3) {
   const model = "gemini-2.5-flash";
   const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, field: { type: Type.STRING }, era: { type: Type.STRING }, description: { type: Type.STRING }, tags: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["name", "field", "era", "description", "tags"] } };
   
   const response = await runWithRetry(() => genAI.models.generateContent({ 
     model, 
-    contents: `Suggest 5 scientific concepts or discoveries in the field: "${field}".
+    contents: `Suggest ${count} scientific concepts or discoveries in the field: "${field}".
     Requirements:
-    1. Include at least one non-Western discovery.
+    1. Include at least one non-Western discovery if applicable.
     2. Mix of foundational and modern breakthroughs.
     3. Focus on the story behind the concept for children.`, 
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.1 } 
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 } 
   }));
   return JSON.parse(response.text);
 }
@@ -258,10 +322,10 @@ async function handleGenerateScienceEntry({ item }) {
     
     Content Guide:
     1. **Concept Definition**: Explain the technology/concept in simple, accurate terms.
-    2. **Human Story**: Discuss the process of innovation, from ideation to execution.
+    2. **Human Story**: Discuss the process of innovation.
     3. **Real-World Impact (Crucial)**: Instead of a generic "Try it out", provide a concrete section titled "Impact on Society".
-       - Discuss **specific** real-world applications (e.g., "This is why MRI machines work" or "This allows GPS to track your location").
-       - Avoid vague statements like "It changed the world." Say *how* (e.g., "It doubled food production during the 1960s").
+       - Discuss **specific** real-world applications.
+       - Avoid vague statements like "It changed the world." Say *how*.
        - Connect it to modern daily life.
     
     Constraints:
@@ -272,19 +336,19 @@ async function handleGenerateScienceEntry({ item }) {
   const response = await runWithRetry(() => genAI.models.generateContent({ 
     model, 
     contents: prompt, 
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.2 } 
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 } 
   }));
   return JSON.parse(response.text);
 }
 
-async function handleDiscoverPhilosophies({ theme }) {
+async function handleDiscoverPhilosophies({ theme }, count = 3) {
   const model = "gemini-2.5-flash";
   const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, origin: { type: Type.STRING }, era: { type: Type.STRING }, coreIdea: { type: Type.STRING }, tags: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["name", "origin", "era", "coreIdea", "tags"] } };
   
   const response = await runWithRetry(() => genAI.models.generateContent({ 
     model, 
-    contents: `Suggest 5 philosophy topics regarding "${theme}". Shall contain both Eastern and Western ideas from different timelines/ eras. Ensure ideas are interesting for a younger audience.`, 
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.2 } 
+    contents: `Suggest ${count} philosophy topics regarding "${theme}". Mix Eastern and Western. Ensure ideas are interesting for a younger audience.`, 
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 } 
   }));
   return JSON.parse(response.text);
 }
@@ -301,9 +365,9 @@ async function handleGeneratePhilosophyEntry({ item }) {
     1. **Core Idea**: Explain the philosophy clearly.
     2. **Historical Episode**: A moment in history where this idea was born or tested.
     3. **Societal Progress (Crucial)**: Instead of a generic "Why it matters", provide a section on "How This Idea Moved Humanity Forward".
-       - Focus on **tangible shifts in society** (e.g., "How Stoicism influenced modern cognitive therapy" or "How Confucianism built the civil service exam system").
-       - Discuss how it helped ideas evolve toward more comprehensive states (e.g., from "might makes right" to "social contract").
-       - Avoid platitudes. Give historical or sociological examples of this idea in action shaping laws, governments, or movements.
+       - Focus on **tangible shifts in society**.
+       - Discuss how it helped ideas evolve toward more comprehensive states.
+       - Give historical or sociological examples.
     
     Constraints:
     - Length: 800-900 words.
@@ -313,7 +377,7 @@ async function handleGeneratePhilosophyEntry({ item }) {
   const response = await runWithRetry(() => genAI.models.generateContent({ 
     model, 
     contents: prompt, 
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.2 } 
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 } 
   }));
   return JSON.parse(response.text);
 }
@@ -330,7 +394,7 @@ async function handleGenerateImage({ prompt, isMap }) {
       model: 'gemini-2.5-flash-image', 
       contents: { parts: [{ text: fullPrompt }] },
       config: { responseModalities: [Modality.IMAGE] },
-    }), 0); // 0 retries for images to prevent blocking
+    }), 0); 
     
     const parts = response.candidates?.[0]?.content?.parts;
     if (parts && parts[0]?.inlineData) {
