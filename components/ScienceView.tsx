@@ -45,31 +45,33 @@ export const ScienceView: React.FC<ScienceViewProps> = ({ entry, item, onBack, l
     return (
         <button
           onClick={() => handleActionRequest('link', href)}
-          className="hover:text-emerald-600 hover:underline decoration-emerald-300 underline-offset-2 transition-colors text-left flex items-center gap-1"
+          className="hover:text-emerald-600 hover:underline decoration-emerald-300 underline-offset-2 transition-colors text-left flex items-center gap-1.5 font-medium"
         >
-            <span>{source}</span>
-            <ExternalLink size={10} />
+            <span className="truncate max-w-[250px] sm:max-w-md">{source}</span>
+            <ExternalLink size={12} className="shrink-0" />
         </button>
     );
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 animate-fadeIn">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 animate-fadeIn">
       <button 
         onClick={onBack}
-        className="mb-8 flex items-center gap-2 text-gray-500 hover:text-ink transition-colors font-semibold"
+        className="group mb-8 flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-emerald-700 transition-colors"
       >
-        <ArrowLeft size={20} />
+        <div className="p-2 rounded-full bg-white border border-gray-200 group-hover:border-emerald-200 group-hover:bg-emerald-50 transition-colors">
+            <ArrowLeft size={16} />
+        </div>
         <span>Back to Lab</span>
       </button>
 
-      <article className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+      <article className="bg-white rounded-[2rem] shadow-2xl shadow-emerald-900/5 overflow-hidden border border-gray-100">
         {/* Header Image */}
-        <div className="relative h-64 md:h-80 bg-emerald-900">
+        <div className="relative h-[40vh] min-h-[300px] md:h-[500px] bg-emerald-950">
           {loadingImages ? (
              <div className="w-full h-full flex flex-col items-center justify-center bg-emerald-900/50 animate-pulse text-emerald-100">
                 <ImageIcon size={48} className="mb-4 opacity-50" />
-                <p className="text-xs font-bold uppercase tracking-wider">Sketching Diagram...</p>
+                <p className="text-xs font-bold uppercase tracking-widest">Sketching Diagram...</p>
              </div>
           ) : (entry.generatedImageUrl && !imgError) ? (
              <img 
@@ -82,56 +84,60 @@ export const ScienceView: React.FC<ScienceViewProps> = ({ entry, item, onBack, l
              <FallbackIllustration category={category} />
           )}
           
-          <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent p-8 z-20">
-             <div className="inline-block bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded mb-2 uppercase tracking-wide">
+          <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-emerald-950/90 via-emerald-950/50 to-transparent p-8 md:p-12 z-20">
+             <div className="inline-block bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wider shadow-lg">
                 {item.field}
              </div>
-             <h1 className="text-3xl md:text-5xl font-serif font-bold text-white mb-1 drop-shadow-md">
+             <h1 className="text-4xl sm:text-5xl md:text-7xl font-serif font-bold text-white mb-2 drop-shadow-lg leading-none tracking-tight">
                 <Typewriter text={entry.title} speed={30} />
              </h1>
-             <p className="text-emerald-100 text-lg">{item.era}</p>
+             <p className="text-emerald-100/90 text-lg sm:text-xl font-medium">{item.era}</p>
           </div>
         </div>
 
-        <div className="p-8 md:p-12 space-y-10">
+        <div className="p-8 sm:p-12 space-y-14 max-w-4xl mx-auto">
           
           {/* Concept Definition */}
           <section>
-            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">The Concept</h2>
-            <p className="text-2xl font-serif text-gray-800 leading-relaxed border-l-4 border-emerald-500 pl-6">
+            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">The Concept</h2>
+            <div className="text-xl sm:text-3xl font-serif text-gray-800 leading-relaxed border-l-[6px] border-emerald-500 pl-8 py-2">
                <Typewriter text={entry.conceptDefinition} speed={20} />
-            </p>
+            </div>
           </section>
 
           {/* The Human Story */}
           <section>
-             <h2 className="flex items-center gap-2 text-xl font-bold text-ink mb-4">
-                <Book className="text-emerald-600" />
+             <h2 className="flex items-center gap-3 text-2xl font-bold text-ink mb-6 tracking-tight">
+                <div className="p-1.5 bg-emerald-100 rounded-lg text-emerald-700">
+                   <Book size={20} strokeWidth={2.5} />
+                </div>
                 The Story Behind the Discovery
              </h2>
-             <div className="prose prose-lg text-gray-600 leading-loose whitespace-pre-line">
+             <div className="prose prose-lg md:prose-xl text-gray-600 leading-loose whitespace-pre-line max-w-none font-serif">
                 <Typewriter text={entry.humanStory} speed={5} />
              </div>
           </section>
 
           {/* Experiment / Activity */}
-          <section className="bg-emerald-50 rounded-2xl p-8 border border-emerald-100">
-             <h2 className="flex items-center gap-2 text-xl font-bold text-emerald-800 mb-4">
-                <FlaskConical className="text-emerald-600" />
+          <section className="bg-emerald-50/80 rounded-3xl p-8 sm:p-10 border border-emerald-100 shadow-sm">
+             <h2 className="flex items-center gap-3 text-2xl font-bold text-emerald-900 mb-4 tracking-tight">
+                <div className="p-1.5 bg-white rounded-lg text-emerald-600 shadow-sm">
+                   <FlaskConical size={20} strokeWidth={2.5} />
+                </div>
                 Try This!
              </h2>
-             <p className="text-emerald-900 leading-relaxed">
+             <p className="text-emerald-900 text-lg leading-relaxed font-medium">
                 <Typewriter text={entry.experimentOrActivity} speed={10} />
              </p>
           </section>
 
           {/* Sources */}
-          <section className="pt-8 border-t border-gray-100">
-             <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Sources & Further Reading</h2>
-             <ul className="space-y-2">
+          <section className="pt-10 border-t border-gray-100">
+             <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">Sources & Further Reading</h2>
+             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-8">
                 {entry.sources.map((source, idx) => (
-                   <li key={idx} className="text-sm text-gray-500 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-gray-300 rounded-full"></span>
+                   <li key={idx} className="text-sm text-gray-500 flex items-start gap-3">
+                      <span className="w-1.5 h-1.5 bg-gray-300 rounded-full mt-2 shrink-0"></span>
                       {renderSourceLink(source)}
                    </li>
                 ))}
@@ -139,13 +145,13 @@ export const ScienceView: React.FC<ScienceViewProps> = ({ entry, item, onBack, l
           </section>
           
           {/* Safety / Report Footer */}
-          <div className="flex justify-center border-t border-gray-100 pt-8">
+          <div className="flex justify-center border-t border-gray-100 pt-10">
               <button 
                 onClick={() => handleActionRequest('report')}
-                className="flex items-center gap-2 text-gray-400 hover:text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg transition-all text-sm font-semibold"
+                className="group flex items-center gap-2 text-gray-400 hover:text-red-500 px-4 py-2 rounded-full hover:bg-red-50 transition-all text-xs font-bold uppercase tracking-wider"
               >
-                 <Flag size={16} />
-                 Report Issue with this Entry
+                 <Flag size={14} className="group-hover:fill-current" />
+                 Report Issue
               </button>
           </div>
 
