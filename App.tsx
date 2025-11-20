@@ -93,7 +93,13 @@ const App: React.FC = () => {
       } else if (e instanceof SafetyError) {
           setError({ message: e.message, type: 'safety' });
       } else {
-          setError({ message: defaultMsg, type: 'general' });
+          // Identify specific API errors to show better messages
+          const msg = e.message?.includes('Timeout') || 
+                      e.message?.includes('too long') || 
+                      e.message?.includes('overloaded') || 
+                      e.message?.includes('503') 
+                      ? e.message : defaultMsg;
+          setError({ message: msg, type: 'general' });
       }
   };
 
@@ -217,7 +223,7 @@ const App: React.FC = () => {
         });
       }
     } catch (e) {
-      handleError(e, "Could not generate content. You may have reached your quota.");
+      handleError(e, "Could not generate content. Please try again.");
       setStep(AppStep.ITEM_SELECT);
       setLoadingContent(false);
     }
