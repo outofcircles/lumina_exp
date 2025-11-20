@@ -6,7 +6,7 @@ import crypto from 'crypto';
 // --- CONFIGURATION ---
 const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Increase Vercel Function Timeout (if plan allows)
+// Increase Vercel Function Timeout
 export const config = {
   maxDuration: 60,
 };
@@ -19,7 +19,6 @@ const supabase = (supabaseUrl && supabaseKey)
   : null;
 
 // Daily Quota Limit per user (Billing Protection)
-// Quota effectively disabled by removing the enforcement logic below
 const DAILY_QUOTA_LIMIT = 999999999; 
 
 // --- RETRY HELPER ---
@@ -84,9 +83,8 @@ export default async function handler(req, res) {
             .eq('id', userId)
             .single();
         
-        // If profile doesn't exist yet (race condition with trigger), create it or treat as 0
+        // If profile doesn't exist yet, create it or treat as 0
         if (!profile) {
-           // Implicitly the trigger should have created it, but if not:
            profile = { daily_usage: 0, last_reset: new Date().toISOString().split('T')[0] };
         }
 
@@ -97,11 +95,8 @@ export default async function handler(req, res) {
             // Reset quota for new day
             await supabase.from('user_profiles').update({ daily_usage: 0, last_reset: today }).eq('id', userId);
         } 
-
-        // BLOCKING LOGIC REMOVED TO ALLOW FREE CREATION
     }
   } else if (!supabase) {
-      // Local/Dev mode without DB
       console.warn("Supabase not configured in API, skipping Auth/Quota checks.");
   }
 
@@ -136,7 +131,6 @@ export default async function handler(req, res) {
       case 'generateImage': result = await handleGenerateImage(payload); break;
       case 'generateAudio': result = await handleGenerateAudio(payload); break;
       case 'getUserQuota': 
-         // Helper action for frontend to fetch quota
          if (!userId) return res.status(200).json({ usage: 0, limit: DAILY_QUOTA_LIMIT });
          const { data: p } = await supabase.from('user_profiles').select('daily_usage').eq('id', userId).single();
          return res.status(200).json({ usage: p?.daily_usage || 0, limit: DAILY_QUOTA_LIMIT });
@@ -145,15 +139,11 @@ export default async function handler(req, res) {
 
     // 3. Post-Generation Updates (Quota & Cache)
     if (supabase) {
-        // Save Cache
         if (cacheHash) {
-            // Fire and forget
             supabase.from('cached_content').insert({ hash: cacheHash, content: result, type: action }).then(() => {});
         }
-        // Increment Quota
         const quotaActions = ['generateStory', 'generateScienceEntry', 'generatePhilosophyEntry'];
         if (userId && quotaActions.includes(action)) {
-             // Increment usage
              const { data: p } = await supabase.from('user_profiles').select('daily_usage').eq('id', userId).single();
              const newUsage = (p?.daily_usage || 0) + 1;
              await supabase.from('user_profiles').update({ daily_usage: newUsage }).eq('id', userId);
@@ -192,16 +182,19 @@ async function handleDiscoverProfiles({ category, language }) {
     Language: ${language}.
     
     CRITICAL REQUIREMENTS:
-    1. Diversity is mandatory. Focus on diversity in gender, culture, and region. Include individuals from at least 3 different continents (e.g., Asia, Africa, South America, Europe).
+    1. Diversity is mandatory. Focus on diversity in gender, culture, and region. Include individuals from at least 3 different continents (e.g., Asia, Africa, North America, South America, Europe).
     2. Era variety is mandatory. HISTORICAL SPREAD: 1 Ancient, 1 Middle Ages, 1 Early Modern, 2 Modern.
-    3. Do not list only Western/European figures.
-    4. The "values" field should list 3 key virtues they embody.
+    3. The "values" field should list 3 key virtues they embody.
   `;
   
   const response = await runWithRetry(() => genAI.models.generateContent({
     model,
     contents: prompt,
-    config: { responseMimeType: "application/json", responseSchema: schema }
+    config: { 
+      responseMimeType: "application/json", 
+      responseSchema: schema,
+      temperature: 0.4 // Stabilize output
+    }
   }));
   return JSON.parse(response.text);
 }
@@ -237,40 +230,45 @@ async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc
     required: ["english", "hindi", "illustrationPrompt", "geography"]
   };
   
-  // Optimized prompt for speed: "Keep it concise" added to prevent timeouts.
   const prompt = `
     Write a biographical story for children about ${profile.name} (${profile.title}) from ${profile.region} (${profile.era}).
     
     I need TWO versions of the story.
     
     1. **English Version**:
-       - Style: Emulate the writing style of **${englishStyleName}**.
-       - Characteristics: ${englishStyleDesc}
-       - Tone: Inspiring, warm.
-       - Length: Keep it concise (approx 250-300 words).
+       - Style: Emulate the writing *style* of **${englishStyleName}** (${englishStyleDesc}).
+       - **IMPORTANT**: Use standard, grammatically correct English. Do NOT use heavy dialect, phonetic spelling, or slang that makes words hard to read (e.g. write "you" not "yer", "listen" not "llsten").
+       - Tone: Inspiring, warm, educational.
+       - Length: Approximately 850 words.
     
     2. **Hindi Version**:
-       - Style: Emulate the famous writing style of **${hindiStyleName}**.
+       - Style: Emulate the writing style of **${hindiStyleName}**.
        - Characteristics: ${hindiStyleDesc}
        - **CRITICAL**: Do NOT translate the English story. Write a completely independent retelling.
-       - Use the specific vocabulary and cadence of ${hindiStyleName}.
-       - Length: Keep it concise (approx 250-300 words).
+       - Use standard Hindi grammar and spelling.
+       - Length: Approximately 850 words.
     
     Structure for both:
     1. Title: Captivating.
     2. Introduction: Who they are.
-    3. Main Story: Early life, challenges, turning points, and how they upheld values like ${profile.values.join(", ")}.
+    3. Main Story: Early life, challenges, turning points, and how they upheld values like ${profile.values.join(", ")}. How their contribution impacted the world.
     4. Value Reflection: A summary lesson.
 
     Additionally, provide:
-    - A prompt for a main illustration scene.
+    - A prompt for a main illustration scene (artistic, detailed).
     - A geography section with a fun fact about ${profile.region} and a map prompt.
   `;
   
   const response = await runWithRetry(() => genAI.models.generateContent({
     model,
     contents: prompt,
-    config: { responseMimeType: "application/json", responseSchema: schema }
+    config: { 
+      responseMimeType: "application/json", 
+      responseSchema: schema,
+      temperature: 0.4, // Fixes "Iagine" and weird spelling
+      topP: 0.95,
+      topK: 40
+    }
   }));
   const result = JSON.parse(response.text);
   result.englishStyle = englishStyleName;
@@ -286,12 +284,20 @@ async function handleDiscoverConcepts({ field }) {
     Suggest 5 scientific concepts or discoveries in the field: "${field}".
     
     CRITICAL REQUIREMENTS:
-    1. Include at least one discovery from non-Western science (e.g., Islamic Golden Age, Ancient India/China).
+    1. Include at least one discovery from non-Western science or technology.
     2. Include a mix of foundational discoveries (old) and modern breakthroughs.
-    3. Focus on the story behind the concept suitable for children.
+    3. Focus on the story behind the concept for children and how it was impactful for humanity.
   `;
 
-  const response = await runWithRetry(() => genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } }));
+  const response = await runWithRetry(() => genAI.models.generateContent({ 
+    model, 
+    contents: prompt, 
+    config: { 
+      responseMimeType: "application/json", 
+      responseSchema: schema,
+      temperature: 0.4
+    } 
+  }));
   return JSON.parse(response.text);
 }
 
@@ -305,12 +311,20 @@ async function handleGenerateScienceEntry({ item }) {
     Era: ${item.era}.
     Description: ${item.description}.
     Audience: Children 8-15.
-    Tone: Excited, curious, factual.
-    Constraint: Keep the story concise (under 300 words) to be quick to read.
-    Focus on the narrative of how it was discovered. How it is useful for humanity.
+    Tone: curious, factual.
+    Constraint: Write roughly 900 words. Ensure perfect spelling and clarity.
+    Focus on the narrative of how it was discovered or developed. How it is useful for humanity.
   `;
   
-  const response = await runWithRetry(() => genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } }));
+  const response = await runWithRetry(() => genAI.models.generateContent({ 
+    model, 
+    contents: prompt, 
+    config: { 
+      responseMimeType: "application/json", 
+      responseSchema: schema,
+      temperature: 0.4 
+    } 
+  }));
   return JSON.parse(response.text);
 }
 
@@ -323,11 +337,19 @@ async function handleDiscoverPhilosophies({ theme }) {
     
     CRITICAL REQUIREMENTS:
     1. You MUST provide a mix of Eastern (Indian, Chinese, Japanese) and Western (Greek, European) schools of thought.
-    2. Do not limit to just one region.
-    3. Ensure the ideas can be simplified for a younger audience.
+    2. Do not limit to just one region or one era.
+    3. Ensure the ideas are useful, important and interesting for a younger audience.
   `;
 
-  const response = await runWithRetry(() => genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } }));
+  const response = await runWithRetry(() => genAI.models.generateContent({ 
+    model, 
+    contents: prompt, 
+    config: { 
+      responseMimeType: "application/json", 
+      responseSchema: schema,
+      temperature: 0.4 
+    } 
+  }));
   return JSON.parse(response.text);
 }
 
@@ -340,28 +362,48 @@ async function handleGeneratePhilosophyEntry({ item }) {
     Origin: ${item.origin}.
     Era: ${item.era}.
     Core Idea: ${item.coreIdea}.
-    Constraint: Keep the explanation concise (under 300 words).
-    
-    Simplify the complex thought into a relatable lesson.
+    Constraint: Write roughly 800 words. Ensure clear, standard grammar.
+    The idea is to introduce children about the development of ${item.name} and its positive impact on world.
+    Simplify the complex thought into an interesting lesson.
   `;
   
-  const response = await runWithRetry(() => genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } }));
+  const response = await runWithRetry(() => genAI.models.generateContent({ 
+    model, 
+    contents: prompt, 
+    config: { 
+      responseMimeType: "application/json", 
+      responseSchema: schema,
+      temperature: 0.4 
+    } 
+  }));
   return JSON.parse(response.text);
 }
 
 async function handleGenerateImage({ prompt, isMap }) {
   const styleSuffix = isMap  ? " -- illustrated map style, colorful, educational, cute icons, parchment background, high quality"
-    : " -- warm colors, children's book illustration style, high quality, artistic, detailed";
+    : " -- warm colors, children's book illustration style, high quality, artistic, detailed, masterpiece";
   
+  const fullPrompt = prompt + styleSuffix;
+
   try {
-    // Images use a different model, but might also be overloaded, so we retry
-    const response = await runWithRetry(() => genAI.models.generateImages({
-      model: 'imagen-4.0-generate-001',
-      prompt: prompt + styleSuffix,
-      config: { numberOfImages: 1, outputMimeType: 'image/jpeg', aspectRatio: isMap ? '1:1' : '4:3' },
+    // Switching to gemini-2.5-flash-image for better reliability and speed compared to Imagen 4
+    const response = await runWithRetry(() => genAI.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: { parts: [{ text: fullPrompt }] },
+      config: { 
+        responseModalities: [Modality.IMAGE],
+        temperature: 0.4 
+      },
     }));
-    return `data:image/jpeg;base64,${response.generatedImages?.[0]?.image?.imageBytes}`;
+    
+    // Extract inline data from the response
+    const parts = response.candidates?.[0]?.content?.parts;
+    if (parts && parts[0]?.inlineData) {
+        return `data:image/jpeg;base64,${parts[0].inlineData.data}`;
+    }
+    throw new Error("No image data returned");
   } catch (e) {
+    console.error("Image Gen Error:", e);
     return `https://picsum.photos/800/600?grayscale&blur=2`;
   }
 }
