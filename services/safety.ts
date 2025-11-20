@@ -9,9 +9,21 @@ export class SafetyError extends Error {
 // A basic blocklist for demonstration. 
 // In a production app, this should be more comprehensive or handled by a dedicated API.
 const RESTRICTED_KEYWORDS = [
-  "murder", "kill", "blood", "death", "violent", "torture", 
-  "sex", "nude", "drug", "alcohol", "tobacco", "cigarette", 
-  "suicide", "hate", "racist", "nazi", "terrorist", "bomb"
+  // Profanity & Vulgarity
+  "fuck", "shit", "bitch", "asshole", "damn", "crap", "piss", "dick", "cock", 
+  "pussy", "vagina", "penis", "boobs", "tits", "slut", "whore", "bastard", 
+  "cunt", "fag", "dyke", "nigger", "retard", "spic", "kike", "chink",
+  
+  // Sexual Content
+  "sex", "nude", "naked", "erotic", "porn", "incest", "masturbat", "orgasm", 
+  "intercourse", "sexual", "fetish", "stripper", "prostitute",
+
+  // Extreme Violence & Abuse
+  "rape", "molest", "abuse", "suicide", "torture", "mutilat", "behead", 
+  "massacre", "genocide", "terrorist",
+  
+  // Substance Abuse
+  "cocaine", "heroin", "meth", "lsd", "marijuana", "weed"
 ];
 
 /**
