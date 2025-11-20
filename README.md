@@ -18,3 +18,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1c9ATceb8tr1YUPKyMUCvgm
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+
+supabase - suryaagr - github login
+gem api key = surbhiagr (or) outofcir
+vercel - outofcirc
+aistudio - suryasurabhi
