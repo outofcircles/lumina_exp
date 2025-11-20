@@ -6,6 +6,11 @@ import crypto from 'crypto';
 // --- CONFIGURATION ---
 const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+// Increase Vercel Function Timeout (if plan allows)
+export const config = {
+  maxDuration: 60,
+};
+
 // Initialize Supabase 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY; 
@@ -16,6 +21,27 @@ const supabase = (supabaseUrl && supabaseKey)
 // Daily Quota Limit per user (Billing Protection)
 // Quota effectively disabled by removing the enforcement logic below
 const DAILY_QUOTA_LIMIT = 999999999; 
+
+// --- RETRY HELPER ---
+const runWithRetry = async (fn, retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      // Check for 503 (Service Unavailable) or "overloaded" message
+      const isOverloaded = error.status === 503 || (error.message && error.message.toLowerCase().includes('overloaded'));
+      
+      if (!isOverloaded || i === retries - 1) {
+        throw error;
+      }
+      
+      // Exponential backoff: 1s, 2s, 3s
+      const delay = 1000 * (i + 1);
+      console.warn(`Gemini 503 hit. Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+};
 
 export default async function handler(req, res) {
   // CORS
@@ -66,20 +92,13 @@ export default async function handler(req, res) {
 
         // Handle date reset
         const today = new Date().toISOString().split('T')[0];
-        // let currentUsage = profile.daily_usage || 0;
 
         if (profile.last_reset !== today) {
             // Reset quota for new day
             await supabase.from('user_profiles').update({ daily_usage: 0, last_reset: today }).eq('id', userId);
-            // currentUsage = 0;
         } 
 
         // BLOCKING LOGIC REMOVED TO ALLOW FREE CREATION
-        // if (currentUsage >= DAILY_QUOTA_LIMIT) {
-        //     return res.status(429).json({ 
-        //         error: `Daily limit of ${DAILY_QUOTA_LIMIT} stories reached. Please try again tomorrow.` 
-        //     });
-        // }
     }
   } else if (!supabase) {
       // Local/Dev mode without DB
@@ -168,7 +187,6 @@ async function handleDiscoverProfiles({ category, language }) {
     }
   };
   
-  // Updated prompt to enforce geography and era variety
   const prompt = `
     Generate a list of 5 inspiring individuals in the category: "${category}". 
     Language: ${language}.
@@ -180,11 +198,11 @@ async function handleDiscoverProfiles({ category, language }) {
     4. The "values" field should list 3 key virtues they embody.
   `;
   
-  const response = await genAI.models.generateContent({
+  const response = await runWithRetry(() => genAI.models.generateContent({
     model,
     contents: prompt,
     config: { responseMimeType: "application/json", responseSchema: schema }
-  });
+  }));
   return JSON.parse(response.text);
 }
 
@@ -219,6 +237,7 @@ async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc
     required: ["english", "hindi", "illustrationPrompt", "geography"]
   };
   
+  // Optimized prompt for speed: "Keep it concise" added to prevent timeouts.
   const prompt = `
     Write a biographical story for children about ${profile.name} (${profile.title}) from ${profile.region} (${profile.era}).
     
@@ -228,13 +247,14 @@ async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc
        - Style: Emulate the writing style of **${englishStyleName}**.
        - Characteristics: ${englishStyleDesc}
        - Tone: Inspiring, warm.
+       - Length: Keep it concise (approx 250-300 words).
     
     2. **Hindi Version**:
        - Style: Emulate the famous writing style of **${hindiStyleName}**.
        - Characteristics: ${hindiStyleDesc}
-       - **CRITICAL**: Do NOT translate the English story. Write a completely independent retelling of the same biography.
-       - Use the specific vocabulary, metaphors, and sentence cadence typical of ${hindiStyleName}.
-       - The content structure should be similar, but the phrasing must be unique to the Hindi literary style.
+       - **CRITICAL**: Do NOT translate the English story. Write a completely independent retelling.
+       - Use the specific vocabulary and cadence of ${hindiStyleName}.
+       - Length: Keep it concise (approx 250-300 words).
     
     Structure for both:
     1. Title: Captivating.
@@ -244,14 +264,14 @@ async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc
 
     Additionally, provide:
     - A prompt for a main illustration scene.
-    - A geography section with a fun fact about the natural world of ${profile.region} and a prompt to generate an illustrated map.
+    - A geography section with a fun fact about ${profile.region} and a map prompt.
   `;
   
-  const response = await genAI.models.generateContent({
+  const response = await runWithRetry(() => genAI.models.generateContent({
     model,
     contents: prompt,
     config: { responseMimeType: "application/json", responseSchema: schema }
-  });
+  }));
   const result = JSON.parse(response.text);
   result.englishStyle = englishStyleName;
   result.hindiStyle = hindiStyleName;
@@ -271,7 +291,7 @@ async function handleDiscoverConcepts({ field }) {
     3. Focus on the story behind the concept suitable for children.
   `;
 
-  const response = await genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
+  const response = await runWithRetry(() => genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } }));
   return JSON.parse(response.text);
 }
 
@@ -286,10 +306,11 @@ async function handleGenerateScienceEntry({ item }) {
     Description: ${item.description}.
     Audience: Children 8-15.
     Tone: Excited, curious, factual.
+    Constraint: Keep the story concise (under 300 words) to be quick to read.
     Focus on the narrative of how it was discovered. How it is useful for humanity.
   `;
   
-  const response = await genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
+  const response = await runWithRetry(() => genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } }));
   return JSON.parse(response.text);
 }
 
@@ -303,10 +324,10 @@ async function handleDiscoverPhilosophies({ theme }) {
     CRITICAL REQUIREMENTS:
     1. You MUST provide a mix of Eastern (Indian, Chinese, Japanese) and Western (Greek, European) schools of thought.
     2. Do not limit to just one region.
-    3. Ensure the ideas can be simplified for a younger audience and help them understand development background and its impact afterwords.
+    3. Ensure the ideas can be simplified for a younger audience.
   `;
 
-  const response = await genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
+  const response = await runWithRetry(() => genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } }));
   return JSON.parse(response.text);
 }
 
@@ -319,11 +340,12 @@ async function handleGeneratePhilosophyEntry({ item }) {
     Origin: ${item.origin}.
     Era: ${item.era}.
     Core Idea: ${item.coreIdea}.
+    Constraint: Keep the explanation concise (under 300 words).
     
     Simplify the complex thought into a relatable lesson.
   `;
   
-  const response = await genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
+  const response = await runWithRetry(() => genAI.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } }));
   return JSON.parse(response.text);
 }
 
@@ -332,11 +354,12 @@ async function handleGenerateImage({ prompt, isMap }) {
     : " -- warm colors, children's book illustration style, high quality, artistic, detailed";
   
   try {
-    const response = await genAI.models.generateImages({
+    // Images use a different model, but might also be overloaded, so we retry
+    const response = await runWithRetry(() => genAI.models.generateImages({
       model: 'imagen-4.0-generate-001',
       prompt: prompt + styleSuffix,
       config: { numberOfImages: 1, outputMimeType: 'image/jpeg', aspectRatio: isMap ? '1:1' : '4:3' },
-    });
+    }));
     return `data:image/jpeg;base64,${response.generatedImages?.[0]?.image?.imageBytes}`;
   } catch (e) {
     return `https://picsum.photos/800/600?grayscale&blur=2`;
@@ -346,11 +369,11 @@ async function handleGenerateImage({ prompt, isMap }) {
 async function handleGenerateAudio({ text }) {
   const model = "gemini-2.5-flash-preview-tts";
   try {
-      const response = await genAI.models.generateContent({
+      const response = await runWithRetry(() => genAI.models.generateContent({
         model,
         contents: [{ parts: [{ text }] }],
         config: { responseModalities: [Modality.AUDIO], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } },
-      });
+      }));
       return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
   } catch (e) { return null; }
 }
