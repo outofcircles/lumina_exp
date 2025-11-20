@@ -20,6 +20,8 @@ const supabase = (supabaseUrl && supabaseKey)
 
 // Daily Quota Limit per user (Billing Protection)
 const DAILY_QUOTA_LIMIT = 999999999; 
+// Increment this version to invalidate all previous cached content
+const CACHE_VERSION = "v2";
 
 // --- RETRY HELPER ---
 const runWithRetry = async (fn, retries = 3) => {
@@ -106,7 +108,8 @@ export default async function handler(req, res) {
     let cacheHash = null;
 
     if (supabase && cacheableActions.includes(action)) {
-       cacheHash = crypto.createHash('sha256').update(action + JSON.stringify(payload)).digest('hex');
+       // Include CACHE_VERSION in hash to allow cache busting
+       cacheHash = crypto.createHash('sha256').update(action + JSON.stringify(payload) + CACHE_VERSION).digest('hex');
        
        const { data: cachedData } = await supabase
          .from('cached_content')
@@ -312,7 +315,11 @@ async function handleGenerateScienceEntry({ item }) {
     Description: ${item.description}.
     Audience: Children 8-15.
     Tone: curious, factual.
-    Constraint: Write roughly 900 words. Ensure perfect spelling and clarity.
+    Constraint: Write roughly 900 words.
+    CRITICAL CONSTRAINTS:
+    1. Write in STANDARD English. 
+    2. Do NOT use phonetic spelling (e.g. never write "Iagine" for "Imagine", "Te" for "The").
+    3. Do NOT use heavy dialect or accents.
     Focus on the narrative of how it was discovered or developed. How it is useful for humanity.
   `;
   
@@ -362,9 +369,13 @@ async function handleGeneratePhilosophyEntry({ item }) {
     Origin: ${item.origin}.
     Era: ${item.era}.
     Core Idea: ${item.coreIdea}.
-    Constraint: Write roughly 800 words. Ensure clear, standard grammar.
+    Constraint: Write roughly 800 words. 
     The idea is to introduce children about the development of ${item.name} and its positive impact on world.
     Simplify the complex thought into an interesting lesson.
+    CRITICAL CONSTRAINTS:
+    1. Write in STANDARD English. 
+    2. Do NOT use phonetic spelling (e.g. never write "Iagine" for "Imagine", "Te" for "The").
+    3. Do NOT use heavy dialect or accents.
   `;
   
   const response = await runWithRetry(() => genAI.models.generateContent({ 
