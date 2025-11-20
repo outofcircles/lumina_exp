@@ -26,6 +26,11 @@ const callBackend = async (action: string, payload: any) => {
   });
 
   if (!response.ok) {
+    // Check for Vercel Timeout specifically
+    if (response.status === 504) {
+      throw new Error("The story is taking too long to write (Timeout). Please try again or try a different topic.");
+    }
+    
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || `Server error: ${response.statusText}`);
   }
