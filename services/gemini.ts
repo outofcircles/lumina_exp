@@ -150,8 +150,20 @@ export const generateStoryAudio = async (text: string, language: Language): Prom
 
 export const getUserQuota = async (): Promise<{usage: number, limit: number}> => {
     try {
-        return await callBackend('getUserQuota', {}, 0);
+        // We pass 0 retries to avoid blocking app load on a non-critical feature
+        const result = await callBackend('getUserQuota', {}, 0);
+        
+        // DEFENSIVE CODING: Ensure result is an object with expected keys
+        if (!result || typeof result !== 'object') {
+            return { usage: 0, limit: 10 }; 
+        }
+        return { 
+            usage: typeof result.usage === 'number' ? result.usage : 0, 
+            limit: typeof result.limit === 'number' ? result.limit : 10 
+        };
     } catch (e) {
-        return { usage: 0, limit: 0 };
+        // On ANY error, return a safe default so the UI doesn't crash
+        console.warn("Failed to fetch quota:", e);
+        return { usage: 0, limit: 10 };
     }
 };
