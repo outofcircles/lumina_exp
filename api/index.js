@@ -178,7 +178,7 @@ async function handleDiscoverProfiles({ category, language }) {
   const response = await runWithRetry(() => genAI.models.generateContent({
     model,
     contents: prompt,
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 }
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.2 }
   }));
   return JSON.parse(response.text);
 }
@@ -221,14 +221,15 @@ async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc
     I need TWO versions of the story.
     
     1. **English Version**:
-       - Style: Emulate the writing *style* of **${englishStyleName}** (${englishStyleDesc}).
-       - **IMPORTANT**: Use standard, grammatically correct English. Do NOT use heavy dialect, phonetic spelling, or slang that makes words hard to read (e.g. write "you" not "yer", "listen" not "llsten").
-       - Tone: Inspiring, warm, educational.
+       - Style: Adopt the **narrative voice** and **tone** of ${englishStyleName} (${englishStyleDesc}).
+       - **CRITICAL CONSTRAINT**: You MUST write in **Standard English**. 
+       - **DO NOT** use dialect, phonetic spelling, or slang (e.g., never use "yer", "gonna", "ol'", "folksy"). Use correct grammar and spelling.
+       - Focus on capturing the *spirit* of the author (e.g., their warmth, wit, or pacing) without imitating their non-standard speech patterns.
+       - Tone: Genuine, grounded, inspiring. Avoid excessive flowery language or embellishment.
        - Length: Approximately 850 words.
     
     2. **Hindi Version**:
-       - Style: Emulate the writing style of **${hindiStyleName}**.
-       - Characteristics: ${hindiStyleDesc}
+       - Style: Emulate the narrative voice of ${hindiStyleName} (${hindiStyleDesc}).
        - **CRITICAL**: Do NOT translate the English story. Write a completely independent retelling.
        - Use standard Hindi grammar and spelling.
        - Length: Approximately 850 words.
@@ -242,16 +243,12 @@ async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc
     Additionally, provide:
     - A prompt for a main illustration scene (artistic, detailed).
     - A geography section with a fun fact about ${profile.region} and a map prompt.
-    
-    CRITICAL CONSTRAINT: 
-    - Word count must be between 800-900 words per language.
-    - Use STANDARD English. No phonetic spelling.
   `;
   
   const response = await runWithRetry(() => genAI.models.generateContent({
     model,
     contents: prompt,
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4, topP: 0.95 }
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.2, topP: 0.90 }
   }));
   const result = JSON.parse(response.text);
   result.englishStyle = englishStyleName;
@@ -281,7 +278,7 @@ async function handleDiscoverConcepts({ field }) {
     1. Include at least one non-Western discovery.
     2. Mix of foundational and modern breakthroughs.
     3. Focus on the story behind the concept for children.`, 
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 } 
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.2 } 
   }));
   return JSON.parse(response.text);
 }
@@ -309,7 +306,7 @@ async function handleGenerateScienceEntry({ item }) {
   const response = await runWithRetry(() => genAI.models.generateContent({ 
     model, 
     contents: prompt, 
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 } 
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.2 } 
   }));
   const result = JSON.parse(response.text);
 
@@ -330,7 +327,7 @@ async function handleDiscoverPhilosophies({ theme }) {
   const response = await runWithRetry(() => genAI.models.generateContent({ 
     model, 
     contents: `Suggest 5 philosophy topics regarding "${theme}". Mix Eastern and Western. Ensure ideas are interesting for a younger audience.`, 
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 } 
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.2 } 
   }));
   return JSON.parse(response.text);
 }
@@ -358,7 +355,7 @@ async function handleGeneratePhilosophyEntry({ item }) {
   const response = await runWithRetry(() => genAI.models.generateContent({ 
     model, 
     contents: prompt, 
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.4 } 
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.2 } 
   }));
   const result = JSON.parse(response.text);
 
