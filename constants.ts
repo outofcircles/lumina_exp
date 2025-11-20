@@ -41,7 +41,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   { 
     id: 'bond', 
     name: 'Ruskin Bond', 
-    description: 'Gentle, nature-loving, and simple storytelling.',
+    description: 'Gentle, nature-loving, and simple storytelling (Standard English).',
     persona: 'The Mountain Storyteller',
     era: '1934–Present',
     majorWorks: ['The Blue Umbrella', 'The Room on the Roof', 'Rusty']
@@ -49,7 +49,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   { 
     id: 'dahl', 
     name: 'Roald Dahl', 
-    description: 'Engaging, slightly witty, and full of wonder.',
+    description: 'Engaging, slightly witty, and full of wonder (Standard English).',
     persona: 'The Whimsical Weaver',
     era: '1916–1990',
     majorWorks: ['Matilda', 'The BFG', 'Charlie and the Chocolate Factory']
@@ -57,7 +57,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   { 
     id: 'andersen', 
     name: 'Hans Christian Andersen', 
-    description: 'Classic fairy tale style with deep morals.',
+    description: 'Classic fairy tale style with deep morals (Standard English).',
     persona: 'The Fable Keeper',
     era: '1805–1875',
     majorWorks: ['The Ugly Duckling', 'The Little Mermaid']
@@ -65,7 +65,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   { 
     id: 'angelou', 
     name: 'Maya Angelou', 
-    description: 'Rhythmic, powerful, and inspiring voice.',
+    description: 'Rhythmic, powerful, and inspiring voice (Standard English).',
     persona: 'The Voice of Soul',
     era: '1928–2014',
     majorWorks: ['I Know Why the Caged Bird Sings', 'On the Pulse of Morning']
@@ -81,7 +81,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   {
     id: 'twain',
     name: 'Mark Twain',
-    description: 'Humorous and observant wit. Use Standard English, avoid dialect.',
+    description: 'Humorous and observant wit. Use Standard English, avoid dialect/phonetic spelling.',
     persona: 'The Witty Observer',
     era: '1835–1910',
     majorWorks: ['Tom Sawyer', 'Huckleberry Finn']
@@ -89,7 +89,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   {
     id: 'rowling',
     name: 'J.K. Rowling',
-    description: 'Imaginative, detailed, and engaging modern fantasy style.',
+    description: 'Imaginative, detailed, and engaging modern fantasy style (Standard English).',
     persona: 'The Magic Weaver',
     era: '1965–Present',
     majorWorks: ['Harry Potter Series']
@@ -97,7 +97,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   {
     id: 'cslewis',
     name: 'C.S. Lewis',
-    description: 'Clear, allegorical, and intellectually stimulating.',
+    description: 'Clear, allegorical, and intellectually stimulating (Standard English).',
     persona: 'The Narnian Scholar',
     era: '1898–1963',
     majorWorks: ['The Chronicles of Narnia', 'The Screwtape Letters']
@@ -105,7 +105,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   {
     id: 'tolkien',
     name: 'J.R.R. Tolkien',
-    description: 'Epic, mythic, and highly descriptive landscape building.',
+    description: 'Epic, mythic, and highly descriptive landscape building (Standard English).',
     persona: 'The Myth Maker',
     era: '1892–1973',
     majorWorks: ['The Hobbit', 'The Lord of the Rings']
@@ -113,7 +113,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   {
     id: 'austen',
     name: 'Jane Austen',
-    description: 'Witty, observant of social manners, and elegant.',
+    description: 'Witty, observant of social manners, and elegant (Standard English).',
     persona: 'The Society Observer',
     era: '1775–1817',
     majorWorks: ['Pride and Prejudice', 'Emma']
@@ -121,7 +121,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   {
     id: 'hemingway',
     name: 'Ernest Hemingway',
-    description: 'Short sentences, direct, punchy, and minimalistic.',
+    description: 'Short sentences, direct, punchy, and minimalistic (Standard English).',
     persona: 'The Direct Voice',
     era: '1899–1961',
     majorWorks: ['The Old Man and the Sea', 'A Farewell to Arms']
@@ -129,7 +129,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   {
     id: 'dickens',
     name: 'Charles Dickens',
-    description: 'Vivid character descriptions and emotional storytelling.',
+    description: 'Vivid character descriptions and emotional storytelling (Standard English).',
     persona: 'The Victorian Storyteller',
     era: '1812–1870',
     majorWorks: ['A Christmas Carol', 'Oliver Twist']
@@ -145,7 +145,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   {
     id: 'wilder',
     name: 'Laura Ingalls Wilder',
-    description: 'Simple, warm, pioneer-style storytelling.',
+    description: 'Simple, warm, pioneer-style storytelling (Standard English).',
     persona: 'The Prairie Voice',
     era: '1867–1957',
     majorWorks: ['Little House on the Prairie']
@@ -153,7 +153,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   {
     id: 'lmontgomery',
     name: 'L.M. Montgomery',
-    description: 'Romantic, flowery descriptions of nature and emotions.',
+    description: 'Romantic, flowery descriptions of nature and emotions (Standard English).',
     persona: 'The Green Gables Dreamer',
     era: '1874–1942',
     majorWorks: ['Anne of Green Gables']
@@ -161,7 +161,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   {
     id: 'carroll',
     name: 'Lewis Carroll',
-    description: 'Nonsensical logic, curious, and playful.',
+    description: 'Nonsensical logic, curious, and playful (Standard English).',
     persona: 'The Wonderland Guide',
     era: '1832–1898',
     majorWorks: ['Alice in Wonderland']
@@ -169,7 +169,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   {
     id: 'verne',
     name: 'Jules Verne',
-    description: 'Adventurous, scientific, and visionary.',
+    description: 'Adventurous, scientific, and visionary (Standard English).',
     persona: 'The Future Voyager',
     era: '1828–1905',
     majorWorks: ['Twenty Thousand Leagues Under the Sea']
@@ -177,7 +177,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   {
     id: 'stevenson',
     name: 'Robert Louis Stevenson',
-    description: 'Swashbuckling adventure and suspenseful narrative.',
+    description: 'Swashbuckling adventure and suspenseful narrative (Standard English).',
     persona: 'The Treasure Hunter',
     era: '1850–1894',
     majorWorks: ['Treasure Island']
