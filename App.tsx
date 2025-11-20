@@ -10,7 +10,7 @@ import { AppStep, AppMode, Language, Profile, Story, ArchivedStory, ScienceItem,
 import { discoverProfiles, generateStory, generateStoryImage, discoverConcepts, generateScienceEntry, discoverPhilosophies, generatePhilosophyEntry, getUserQuota } from './services/gemini';
 import { saveItemToArchive, getArchivedStories, deleteStoryFromArchive, toggleStoryFavorite, getLocalFavorites } from './services/storage';
 import { CATEGORIES, SCIENCE_CATEGORIES, PHILOSOPHY_CATEGORIES, AUTHOR_STYLES, HINDI_AUTHOR_STYLES, DEFAULT_LANGUAGE } from './constants';
-import { Sparkles, BookOpen, Library, Atom, Scale, AlertTriangle, X, Hourglass, ShieldCheck, LogOut, Battery } from 'lucide-react';
+import { Sparkles, BookOpen, Library, Atom, Scale, AlertTriangle, X, Hourglass, ShieldCheck, LogOut, Battery, Globe } from 'lucide-react';
 import { RateLimitError } from './services/rateLimit';
 import { SafetyError } from './services/safety';
 import { supabase } from './services/supabaseClient';
@@ -109,7 +109,7 @@ const App: React.FC = () => {
     setGeneratedContent(null);
     setError(null);
     setLoadingImages(false);
-    if (mode === AppMode.STORIES) setLanguage(Language.ENGLISH); 
+    // Note: We do NOT reset language here so user preference persists
   };
 
   const handleTabChange = (newMode: AppMode) => {
@@ -239,7 +239,10 @@ const App: React.FC = () => {
       setStep(AppStep.CONTENT_VIEW);
       setError(null);
       setLoadingImages(false);
-      if (archivedItem.type === AppMode.STORIES) setLanguage(Language.ENGLISH);
+      // Restore the language used when saving, if available
+      if (archivedItem.type === AppMode.STORIES && archivedItem.metadata.primaryLanguage) {
+          setLanguage(archivedItem.metadata.primaryLanguage as Language);
+      }
   };
 
   if (checkingAuth) return <div className="h-screen flex items-center justify-center bg-parchment"><Sparkles className="animate-spin text-gold" size={48}/></div>;
@@ -272,6 +275,18 @@ const App: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-3 shrink-0">
+               {/* Language Switcher - Restored */}
+               {mode === AppMode.STORIES && (
+                   <button 
+                     onClick={() => setLanguage(language === Language.ENGLISH ? Language.HINDI : Language.ENGLISH)}
+                     className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-ink"
+                     title="Switch Language"
+                   >
+                      <Globe size={18} />
+                      <span className="hidden md:inline">{language === Language.ENGLISH ? 'EN' : 'HI'}</span>
+                   </button>
+               )}
+
                {/* Quota Indicator */}
                <div className="hidden md:flex items-center gap-2 text-xs font-bold px-4 py-2 bg-blue-50 text-blue-700 rounded-full border border-blue-100 shadow-sm" title="Daily Generation Limit">
                   <Battery size={16} className={quota.usage >= quota.limit ? 'text-red-500' : 'text-blue-500'} />
