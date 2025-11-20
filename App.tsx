@@ -309,15 +309,18 @@ const App: React.FC = () => {
         )}
 
         {step === AppStep.CATEGORY_SELECT && (
-          <div className="animate-fadeIn">
-             <div className="text-center max-w-2xl mx-auto mb-12">
-                <h2 className="text-4xl md:text-5xl font-serif font-bold text-ink mb-4">
+          <div className="animate-fadeIn w-full">
+             <div className="text-center max-w-3xl mx-auto mb-16">
+                <h2 className="text-4xl md:text-6xl font-serif font-bold text-ink mb-6 tracking-tight">
                   {mode === AppMode.STORIES && "Discover a world of heroes."}
                   {mode === AppMode.CONCEPTS && "Explore the wonders of science."}
                   {mode === AppMode.PHILOSOPHIES && "Understand the great ideas."}
                 </h2>
-                <CategoryGrid categories={getActiveCategories()} onSelect={handleCategorySelect} />
+                <p className="text-lg md:text-xl text-gray-500 leading-relaxed max-w-2xl mx-auto">
+                   Select a path below to begin a journey of discovery, tailored for young minds.
+                </p>
              </div>
+             <CategoryGrid categories={getActiveCategories()} onSelect={handleCategorySelect} />
           </div>
         )}
 
