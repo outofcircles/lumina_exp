@@ -1,4 +1,3 @@
-
 import { Category, AuthorStyle, Language } from './types';
 
 export const CATEGORIES: Category[] = [
@@ -34,7 +33,7 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   { 
     id: 'tagore', 
     name: 'Rabindranath Tagore', 
-    description: 'Poetic, lyrical, and deeply human.',
+    description: 'Poetic, lyrical, and deeply human (Standard English).',
     persona: 'The Bard of Bengal',
     era: '1861–1941',
     majorWorks: ['Gitanjali', 'Kabuliwala', 'The Home and the World']
@@ -42,10 +41,10 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
   { 
     id: 'bond', 
     name: 'Ruskin Bond', 
-    description: 'Gentle, nature-loving, and simple.',
+    description: 'Gentle, nature-loving, and simple storytelling.',
     persona: 'The Mountain Storyteller',
     era: '1934–Present',
-    majorWorks: ['The Blue Umbrella', 'The Room on the Roof', 'Rusty, the Boy from the Hills']
+    majorWorks: ['The Blue Umbrella', 'The Room on the Roof', 'Rusty']
   },
   { 
     id: 'dahl', 
@@ -61,39 +60,135 @@ export const AUTHOR_STYLES: AuthorStyle[] = [
     description: 'Classic fairy tale style with deep morals.',
     persona: 'The Fable Keeper',
     era: '1805–1875',
-    majorWorks: ['The Ugly Duckling', 'The Little Mermaid', 'The Emperor’s New Clothes']
+    majorWorks: ['The Ugly Duckling', 'The Little Mermaid']
   },
   { 
     id: 'angelou', 
     name: 'Maya Angelou', 
-    description: 'Rhythmic, powerful, and inspiring.',
+    description: 'Rhythmic, powerful, and inspiring voice.',
     persona: 'The Voice of Soul',
     era: '1928–2014',
-    majorWorks: ['I Know Why the Caged Bird Sings', 'On the Pulse of Morning', 'And Still I Rise']
+    majorWorks: ['I Know Why the Caged Bird Sings', 'On the Pulse of Morning']
   },
   {
     id: 'shakespeare',
     name: 'William Shakespeare',
-    description: 'Dramatic, poetic, using rich metaphors and rhythmic cadence.',
+    description: 'Dramatic and poetic, using rich vocabulary but modern grammar.',
     persona: 'The Bard of Avon',
     era: '1564–1616',
     majorWorks: ['Hamlet', 'Macbeth', 'Romeo and Juliet']
   },
   {
-    id: 'homer',
-    name: 'Homer',
-    description: 'Grand, heroic, using epithets and invocation of muses.',
-    persona: 'The Epic Bard',
-    era: 'c. 8th Century BC',
-    majorWorks: ['The Iliad', 'The Odyssey']
-  },
-  {
     id: 'twain',
     name: 'Mark Twain',
-    description: 'Humorous, down-to-earth, and full of spirited adventure.',
-    persona: 'The Folksy Narrator',
+    description: 'Humorous and observant wit. Use Standard English, avoid dialect.',
+    persona: 'The Witty Observer',
     era: '1835–1910',
     majorWorks: ['Tom Sawyer', 'Huckleberry Finn']
+  },
+  {
+    id: 'rowling',
+    name: 'J.K. Rowling',
+    description: 'Imaginative, detailed, and engaging modern fantasy style.',
+    persona: 'The Magic Weaver',
+    era: '1965–Present',
+    majorWorks: ['Harry Potter Series']
+  },
+  {
+    id: 'cslewis',
+    name: 'C.S. Lewis',
+    description: 'Clear, allegorical, and intellectually stimulating.',
+    persona: 'The Narnian Scholar',
+    era: '1898–1963',
+    majorWorks: ['The Chronicles of Narnia', 'The Screwtape Letters']
+  },
+  {
+    id: 'tolkien',
+    name: 'J.R.R. Tolkien',
+    description: 'Epic, mythic, and highly descriptive landscape building.',
+    persona: 'The Myth Maker',
+    era: '1892–1973',
+    majorWorks: ['The Hobbit', 'The Lord of the Rings']
+  },
+  {
+    id: 'austen',
+    name: 'Jane Austen',
+    description: 'Witty, observant of social manners, and elegant.',
+    persona: 'The Society Observer',
+    era: '1775–1817',
+    majorWorks: ['Pride and Prejudice', 'Emma']
+  },
+  {
+    id: 'hemingway',
+    name: 'Ernest Hemingway',
+    description: 'Short sentences, direct, punchy, and minimalistic.',
+    persona: 'The Direct Voice',
+    era: '1899–1961',
+    majorWorks: ['The Old Man and the Sea', 'A Farewell to Arms']
+  },
+  {
+    id: 'dickens',
+    name: 'Charles Dickens',
+    description: 'Vivid character descriptions and emotional storytelling.',
+    persona: 'The Victorian Storyteller',
+    era: '1812–1870',
+    majorWorks: ['A Christmas Carol', 'Oliver Twist']
+  },
+  {
+    id: 'seuss',
+    name: 'Dr. Seuss',
+    description: 'Playful, rhythmic, and whimsical (Standard English only).',
+    persona: 'The Rhyme Master',
+    era: '1904–1991',
+    majorWorks: ['The Cat in the Hat', 'The Lorax']
+  },
+  {
+    id: 'wilder',
+    name: 'Laura Ingalls Wilder',
+    description: 'Simple, warm, pioneer-style storytelling.',
+    persona: 'The Prairie Voice',
+    era: '1867–1957',
+    majorWorks: ['Little House on the Prairie']
+  },
+  {
+    id: 'lmontgomery',
+    name: 'L.M. Montgomery',
+    description: 'Romantic, flowery descriptions of nature and emotions.',
+    persona: 'The Green Gables Dreamer',
+    era: '1874–1942',
+    majorWorks: ['Anne of Green Gables']
+  },
+  {
+    id: 'carroll',
+    name: 'Lewis Carroll',
+    description: 'Nonsensical logic, curious, and playful.',
+    persona: 'The Wonderland Guide',
+    era: '1832–1898',
+    majorWorks: ['Alice in Wonderland']
+  },
+  {
+    id: 'verne',
+    name: 'Jules Verne',
+    description: 'Adventurous, scientific, and visionary.',
+    persona: 'The Future Voyager',
+    era: '1828–1905',
+    majorWorks: ['Twenty Thousand Leagues Under the Sea']
+  },
+  {
+    id: 'stevenson',
+    name: 'Robert Louis Stevenson',
+    description: 'Swashbuckling adventure and suspenseful narrative.',
+    persona: 'The Treasure Hunter',
+    era: '1850–1894',
+    majorWorks: ['Treasure Island']
+  },
+  {
+    id: 'hurston',
+    name: 'Zora Neale Hurston',
+    description: 'Vibrant, folkloric, and soulful (Standard English grammar).',
+    persona: 'The Folklore Keeper',
+    era: '1891–1960',
+    majorWorks: ['Their Eyes Were Watching God']
   }
 ];
 
@@ -102,7 +197,7 @@ export const HINDI_AUTHOR_STYLES: AuthorStyle[] = [
     id: 'premchand', 
     name: 'Munshi Premchand', 
     description: 'Grounded, realistic, simple yet profound language.',
-    persona: 'Katha Samrat (Emperor of Stories)',
+    persona: 'Katha Samrat',
     era: '1880–1936',
     majorWorks: ['Godaan', 'Idgah', 'Mansarovar']
   },
@@ -110,25 +205,25 @@ export const HINDI_AUTHOR_STYLES: AuthorStyle[] = [
     id: 'dinkar', 
     name: 'Ramdhari Singh Dinkar', 
     description: 'Veer Ras - powerful, energetic, and inspiring.',
-    persona: 'Rashtra Kavi (National Poet)',
+    persona: 'Rashtra Kavi',
     era: '1908–1974',
-    majorWorks: ['Rashmirathi', 'Urvashi', 'Kurukshetra']
+    majorWorks: ['Rashmirathi', 'Urvashi']
   },
   { 
     id: 'kabir', 
     name: 'Kabirdas', 
-    description: 'Mystical, doha style, focused on wisdom and truth.',
+    description: 'Mystical, direct, focused on wisdom and truth.',
     persona: 'The Mystic Weaver',
     era: '15th Century',
-    majorWorks: ['Bijak', 'Sakhi Granth', 'Kabir Granthawali']
+    majorWorks: ['Bijak', 'Sakhi Granth']
   },
   { 
     id: 'tulsi', 
     name: 'Tulsidas', 
-    description: 'Devotional, flowery, and rhythmic Awadhi style.',
+    description: 'Devotional, flowery, and rhythmic.',
     persona: 'The Devotional Bard',
     era: '1511–1623',
-    majorWorks: ['Ramcharitmanas', 'Vinaya Patrika', 'Hanuman Chalisa']
+    majorWorks: ['Ramcharitmanas']
   },
   { 
     id: 'gupt', 
@@ -136,7 +231,7 @@ export const HINDI_AUTHOR_STYLES: AuthorStyle[] = [
     description: 'Patriotic, cultural, and poetic standard Hindi.',
     persona: 'The Cultural Voice',
     era: '1886–1964',
-    majorWorks: ['Saket', 'Yashodhara', 'Bharat-Bharati']
+    majorWorks: ['Saket', 'Yashodhara']
   },
   { 
     id: 'subhadra', 
@@ -144,23 +239,103 @@ export const HINDI_AUTHOR_STYLES: AuthorStyle[] = [
     description: 'Heroic, ballad style, famous for Jhansi ki Rani.',
     persona: 'The Heroic Voice',
     era: '1904–1948',
-    majorWorks: ['Jhansi Ki Rani', 'Mukul', 'Tridhara']
+    majorWorks: ['Jhansi Ki Rani']
   },
   {
     id: 'kalidasa',
     name: 'Kalidasa',
-    description: 'Rich with nature imagery, ornate similes (Upama), and beauty.',
+    description: 'Rich with nature imagery and beauty (Translated Style).',
     persona: 'Kavikulaguru',
-    era: 'c. 4th–5th Century CE',
-    majorWorks: ['Abhigyan Shakuntalam', 'Meghaduta']
+    era: 'c. 4th Century CE',
+    majorWorks: ['Abhigyan Shakuntalam']
   },
   {
-    id: 'surdas',
-    name: 'Surdas',
-    description: 'Passionate, lyrical, and deeply devotional (Bhakti).',
-    persona: 'The Devotional Singer',
-    era: 'c. 16th Century',
-    majorWorks: ['Sur Sagar', 'Sur Saravali']
+    id: 'harivansh',
+    name: 'Harivansh Rai Bachchan',
+    description: 'Lyrical, rhythmic, and philosophical (Halavad style).',
+    persona: 'The Madhushala Poet',
+    era: '1907–2003',
+    majorWorks: ['Madhushala', 'Agneepath']
+  },
+  {
+    id: 'nirala',
+    name: 'Suryakant Tripathi Nirala',
+    description: 'Revolutionary, free-verse, and emotional.',
+    persona: 'Mahapran',
+    era: '1896–1961',
+    majorWorks: ['Saroj Smriti', 'Parimal']
+  },
+  {
+    id: 'mahadevi',
+    name: 'Mahadevi Varma',
+    description: 'Emotive, compassionate (Chhayavaad), focusing on pain and nature.',
+    persona: 'Modern Meera',
+    era: '1907–1987',
+    majorWorks: ['Yama', 'Gillu']
+  },
+  {
+    id: 'shastri',
+    name: 'Acharya Chatursen Shastri',
+    description: 'Historical fiction style, dramatic and vivid.',
+    persona: 'The Historical Narrator',
+    era: '1891–1960',
+    majorWorks: ['Vaishali Ki Nagarvadhu']
+  },
+  {
+    id: 'bhandari',
+    name: 'Mannu Bhandari',
+    description: 'Modern, relatable, dealing with middle-class issues.',
+    persona: 'The New Wave Voice',
+    era: '1931–2021',
+    majorWorks: ['Mahabhoj', 'Aapka Bunty']
+  },
+  {
+    id: 'prasad',
+    name: 'Jaishankar Prasad',
+    description: 'Grand, sanskritized Hindi, romantic and philosophical.',
+    persona: 'Chhayavaad Pillar',
+    era: '1889–1937',
+    majorWorks: ['Kamayani', 'Dhruvaswamini']
+  },
+  {
+    id: 'pant',
+    name: 'Sumitranandan Pant',
+    description: 'Gentle, nature-centric, and soft spoken.',
+    persona: 'Nature’s Poet',
+    era: '1900–1977',
+    majorWorks: ['Chidambara', 'Pallav']
+  },
+  {
+    id: 'agye',
+    name: 'Agyeya (S.H. Vatsyayan)',
+    description: 'Modernist, experimental, and psychological.',
+    persona: 'The Experimentalist',
+    era: '1911–1987',
+    majorWorks: ['Shekhar: Ek Jeevani']
+  },
+  {
+    id: 'raghav',
+    name: 'Rangeya Raghav',
+    description: 'Progressive, detailed, and socially conscious.',
+    persona: 'The Progressive Voice',
+    era: '1923–1962',
+    majorWorks: ['Murdon Ka Teela']
+  },
+  {
+    id: 'parsai',
+    name: 'Harishankar Parsai',
+    description: 'Satirical, witty, and humorous social commentary.',
+    persona: 'The Satirist',
+    era: '1924–1995',
+    majorWorks: ['Viklang Shraddha Ka Daur']
+  },
+  {
+    id: 'renu',
+    name: 'Phanishwar Nath Renu',
+    description: 'Regional flavor (Aanchalik), rural, and earthy.',
+    persona: 'The Rural Voice',
+    era: '1921–1977',
+    majorWorks: ['Maila Aanchal']
   }
 ];
 
