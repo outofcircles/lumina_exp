@@ -19,8 +19,8 @@ const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Quota State
-  const [quota, setQuota] = useState({ usage: 0, limit: 10 });
+  // Quota State - Initialize safely
+  const [quota, setQuota] = useState<{usage: number, limit: number}>({ usage: 0, limit: 100000 });
 
   const [mode, setMode] = useState<AppMode>(AppMode.STORIES);
   const [step, setStep] = useState<AppStep>(AppStep.CATEGORY_SELECT);
@@ -76,8 +76,14 @@ const App: React.FC = () => {
   };
 
   const refreshQuota = async () => {
-      const q = await getUserQuota();
-      setQuota(q);
+      try {
+          const q = await getUserQuota();
+          if (q && typeof q.usage === 'number') {
+              setQuota(q);
+          }
+      } catch (e) {
+          console.warn("Quota refresh failed silently");
+      }
   };
 
   const handleLogout = async () => {
@@ -296,11 +302,13 @@ const App: React.FC = () => {
                    </button>
                )}
 
-               {/* Quota Indicator */}
-               <div className="hidden md:flex items-center gap-2 text-xs font-bold px-4 py-2 bg-blue-50 text-blue-700 rounded-full border border-blue-100 shadow-sm" title="Daily Generation Limit">
-                  <Battery size={16} className={quota.usage >= quota.limit ? 'text-red-500' : 'text-blue-500'} />
-                  <span>{quota.limit - quota.usage} left</span>
-               </div>
+               {/* Quota Indicator - Safely Rendered */}
+               {quota && (
+                   <div className="hidden md:flex items-center gap-2 text-xs font-bold px-4 py-2 bg-blue-50 text-blue-700 rounded-full border border-blue-100 shadow-sm" title="Daily Generation Limit">
+                      <Battery size={16} className={(quota.usage || 0) >= (quota.limit || 10) ? 'text-red-500' : 'text-blue-500'} />
+                      <span>{(quota.limit || 10) - (quota.usage || 0)} left</span>
+                   </div>
+               )}
 
                <button 
                  onClick={() => { setStep(AppStep.ARCHIVE_LIST); setError(null); }}
