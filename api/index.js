@@ -392,7 +392,7 @@ async function handleGenerateImage({ prompt, isMap }) {
       contents: { parts: [{ text: fullPrompt }] },
       config: { 
         responseModalities: [Modality.IMAGE],
-        temperature: 0.4 
+        //temperature: 0.4 
       },
     }));
     
