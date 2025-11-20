@@ -19,11 +19,10 @@ const STRICT_BLOCKLIST = [
   "intercourse", "sexual", "fetish", "stripper", "prostitute",
 
   // Extreme Violence & Abuse
-  "rape", "molest", "abuse", "suicide", "torture", "mutilat", "behead", 
-  "execution", "massacre", "genocide", "terrorist",
+  "rape", "molest", "abuse", "suicide", "torture", "mutilat", "behead", "massacre", "genocide", "terrorist",
   
   // Substance Abuse
-  "cocaine", "heroin", "meth", "lsd", "marijuana", "weed", "drug", "tobacco", "cigarette"
+  "cocaine", "heroin", "meth", "lsd", "marijuana", "weed", "tobacco", "cigarette"
 ];
 
 // --- 2. SENSITIVE CONTEXT LIST (Optional) ---
