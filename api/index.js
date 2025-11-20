@@ -23,22 +23,28 @@ const DAILY_QUOTA_LIMIT = 999999999;
 // Increment this version to invalidate all previous cached content
 const CACHE_VERSION = "v2";
 
-// --- RETRY HELPER ---
+// --- RETRY HELPER (UPDATED) ---
 const runWithRetry = async (fn, retries = 3) => {
   for (let i = 0; i < retries; i++) {
     try {
       return await fn();
     } catch (error) {
-      // Check for 503 (Service Unavailable) or "overloaded" message
-      const isOverloaded = error.status === 503 || (error.message && error.message.toLowerCase().includes('overloaded'));
+      // Check for 503 (Service Unavailable) OR 429 (Too Many Requests)
+      const status = error.status || error.response?.status;
+      const isOverloaded = status === 503 || (error.message && error.message.toLowerCase().includes('overloaded'));
+      const isRateLimited = status === 429 || (error.message && error.message.toLowerCase().includes('resource exhausted'));
       
-      if (!isOverloaded || i === retries - 1) {
+      // If it's not a recoverable error, or we ran out of retries, throw it
+      if ((!isOverloaded && !isRateLimited) || i === retries - 1) {
         throw error;
       }
       
-      // Exponential backoff: 1s, 2s, 3s
-      const delay = 1000 * (i + 1);
-      console.warn(`Gemini 503 hit. Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
+      // Exponential backoff: 2s, 4s, 8s (Increased timing for 429s)
+      // Rate limits usually require a longer wait than 503s
+      const baseDelay = isRateLimited ? 2000 : 1000; 
+      const delay = baseDelay * (Math.pow(2, i));
+      
+      console.warn(`Gemini ${status || 'Error'} hit. Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
