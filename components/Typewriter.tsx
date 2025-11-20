@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface TypewriterProps {
   text: string;
@@ -10,31 +9,32 @@ interface TypewriterProps {
 
 export const Typewriter: React.FC<TypewriterProps> = ({ text, speed = 10, onComplete, className = '' }) => {
   const [displayedText, setDisplayedText] = useState('');
-  const indexRef = useRef(0);
-  const timerRef = useRef<any>(null);
 
   useEffect(() => {
-    // Reset if text changes
+    // Reset display when text changes
     setDisplayedText('');
-    indexRef.current = 0;
     
-    // Clear any existing timer
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (!text) return;
 
-    timerRef.current = setInterval(() => {
-      if (indexRef.current < text.length) {
-        setDisplayedText((prev) => prev + text.charAt(indexRef.current));
-        indexRef.current++;
+    let currentIndex = 0;
+    
+    const intervalId = setInterval(() => {
+      // Ideally we would increment first or check length
+      if (currentIndex < text.length) {
+        currentIndex++;
+        // Using slice guarantees we never "skip" a letter or mis-order them.
+        // It forces the display to match exactly the first N characters of the source.
+        setDisplayedText(text.slice(0, currentIndex));
       } else {
-        if (timerRef.current) clearInterval(timerRef.current);
+        clearInterval(intervalId);
         if (onComplete) onComplete();
       }
     }, speed);
 
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return () => clearInterval(intervalId);
   }, [text, speed, onComplete]);
 
-  return <div className={className}>{displayedText}</div>;
+  // Use a min-height or preserve space to prevent layout shifts if needed, 
+  // but for inline text, simple return is fine.
+  return <span className={className}>{displayedText}</span>;
 };
