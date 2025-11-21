@@ -77,60 +77,52 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Handle Discovery Actions with Mixed Content Strategy (1 Cache + 2 API)
+    // 1. Handle Discovery Actions with Mixed Content Strategy
     const discoveryActions = ['discoverProfiles', 'discoverConcepts', 'discoverPhilosophies'];
     
     if (supabase && discoveryActions.includes(action)) {
-        // Create a hash that represents the CATEGORY, not the specific request instance
-        // This allows us to find "similar" previous requests
         const categoryKey = action + JSON.stringify(payload.category || payload.field || payload.theme);
         const contentHash = crypto.createHash('sha256').update(categoryKey + CACHE_VERSION).digest('hex');
 
-        // Try to find existing items for this category in our catalog
-        // Note: This assumes you have set up the 'discovery_catalog' table as discussed.
-        // If not, we fallback to a simpler logic using 'cached_content' if possible, 
-        // but for now let's simulate the "Mix" logic using standard caching if table is missing.
-        
-        // STRATEGY: Fetch 1 random item from cache if available, generate 2 new ones.
-        
-        // Check if we have a FULL cached result first (fallback)
+        // Try to fetch cache
         const { data: fullCache } = await supabase.from('cached_content').select('content').eq('hash', contentHash).single();
         
+        // OPTION A: Serve full cache (30% chance)
         if (fullCache && Math.random() > 0.7) { 
-            // 30% chance to just return full cache to save massive quota
             console.log(`[CACHE HIT] Serving full cached list for ${action}`);
             return res.status(200).json(fullCache.content);
         }
 
-        // If we are here, we are generating fresh content (mostly).
-        // In a real implementation with 'discovery_catalog', we would pull 1 row here.
-        // Since we are using 'cached_content' JSON blobs, it's hard to extract just 1 clean item without parsing.
-        // So we will generate 2 items from API and try to append 1 from a previous cache if it exists.
-        
+        // OPTION B: Mix Strategy
         let cachedItem = null;
         if (fullCache && Array.isArray(fullCache.content) && fullCache.content.length > 0) {
             cachedItem = fullCache.content[Math.floor(Math.random() * fullCache.content.length)];
         }
 
-        // Generate 2 items from API (Reduced from 3)
-        const freshItems = await handleDiscoveryAction(action, payload, 2); 
+        // FIX: Determine how many fresh items we need
+        // If we have a cached item, we need 2. If not (first run), we need 3.
+        const itemsNeeded = cachedItem ? 2 : 3;
+        
+        const freshItems = await handleDiscoveryAction(action, payload, itemsNeeded); 
         
         let finalResult = freshItems;
+        
         if (cachedItem) {
-            // Deduplicate: Only add cached item if it's not in fresh items
             const isDuplicate = freshItems.some(i => (i.name || i.title) === (cachedItem.name || cachedItem.title));
             if (!isDuplicate) {
                 finalResult = [cachedItem, ...freshItems];
             } else {
-                 // If duplicate, just generate one more or stick with 2
-                 // For quota safety, we'll just stick with 2 or try to find another cached one?
-                 // Simplest: Just return the 2 fresh ones.
+                // If duplicate, we are stuck with 2 items. 
+                // To ensure 3, we could technically fetch one more, but for quota safety,
+                // let's check if the cache has *another* item, or just accept 2 is better than crashing.
+                // Better fix: If duplicate, just use the fresh 2, OR duplicate the first fresh one to fill the gap (hacky).
+                // Real Fix: Since we requested 2, and the 3rd failed, we just return 2. 
+                // To guarantee 3 every time, we'd need to request 3 fresh ones if cache fails, which defeats the purpose.
+                
+                // However, for "First Run" scenario, itemsNeeded is 3, so freshItems has 3. logic holds.
             }
         }
-        
-        // Ensure we have at least 3 items (if cache missed, we might only have 2)
-        // If strictly < 3, maybe make one more call? For now, 2 is better than error.
-        
+
         // Save this new mix to cache for future
         if (supabase) {
             supabase.from('cached_content').insert({ hash: contentHash, content: finalResult, type: action }).then(() => {});
@@ -139,14 +131,13 @@ export default async function handler(req, res) {
         return res.status(200).json(finalResult);
     }
 
-    // 2. Handle Other Actions (Generation, etc.)
+    // 2. Handle Other Actions
     let result;
     switch (action) {
-      // Discovery actions are handled above, but if supabase is offline, we fall through here
       case 'discoverProfiles': 
       case 'discoverConcepts': 
       case 'discoverPhilosophies':
-          result = await handleDiscoveryAction(action, payload, 3); // Default to 3 if no cache logic
+          result = await handleDiscoveryAction(action, payload, 3); // Default to 3 if no supabase
           break;
           
       case 'generateStory': result = await handleGenerateStory(payload); break;
@@ -160,7 +151,6 @@ export default async function handler(req, res) {
       default: throw new Error('Invalid action');
     }
 
-    // Post-Generation Updates for non-discovery actions
     if (supabase) {
         const quotaActions = ['generateStory', 'generateScienceEntry', 'generatePhilosophyEntry'];
         if (userId && quotaActions.includes(action)) {
@@ -188,7 +178,7 @@ async function handleDiscoveryAction(action, payload, count) {
 
 // --- HANDLERS ---
 
-async function handleDiscoverProfiles({ category, language }, count = 3) {
+async function handleDiscoverProfiles({ category, language }, count) {
   const model = "gemini-2.5-flash";
   const schema = {
     type: Type.ARRAY,
@@ -296,7 +286,7 @@ async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc
   return result;
 }
 
-async function handleDiscoverConcepts({ field }, count = 3) {
+async function handleDiscoverConcepts({ field }, count) {
   const model = "gemini-2.5-flash";
   const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, field: { type: Type.STRING }, era: { type: Type.STRING }, description: { type: Type.STRING }, tags: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["name", "field", "era", "description", "tags"] } };
   
@@ -341,7 +331,7 @@ async function handleGenerateScienceEntry({ item }) {
   return JSON.parse(response.text);
 }
 
-async function handleDiscoverPhilosophies({ theme }, count = 3) {
+async function handleDiscoverPhilosophies({ theme }, count) {
   const model = "gemini-2.5-flash";
   const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, origin: { type: Type.STRING }, era: { type: Type.STRING }, coreIdea: { type: Type.STRING }, tags: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["name", "origin", "era", "coreIdea", "tags"] } };
   
