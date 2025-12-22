@@ -179,7 +179,7 @@ async function handleDiscoveryAction(action, payload, count) {
 // --- HANDLERS ---
 
 async function handleDiscoverProfiles({ category, language }, count) {
-  const model = "gemini-2.5-flash";
+  const model = "gemini-2.5-flash-lite";
   const schema = {
     type: Type.ARRAY,
     items: {
@@ -287,7 +287,7 @@ async function handleGenerateStory({ profile, englishStyleName, englishStyleDesc
 }
 
 async function handleDiscoverConcepts({ field }, count) {
-  const model = "gemini-2.5-flash";
+  const model = "gemini-2.5-flash-lite";
   const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, field: { type: Type.STRING }, era: { type: Type.STRING }, description: { type: Type.STRING }, tags: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["name", "field", "era", "description", "tags"] } };
   
   const response = await runWithRetry(() => genAI.models.generateContent({ 
@@ -332,7 +332,7 @@ async function handleGenerateScienceEntry({ item }) {
 }
 
 async function handleDiscoverPhilosophies({ theme }, count) {
-  const model = "gemini-2.5-flash";
+  const model = "gemini-2.5-flash-lite";
   const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, origin: { type: Type.STRING }, era: { type: Type.STRING }, coreIdea: { type: Type.STRING }, tags: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["name", "origin", "era", "coreIdea", "tags"] } };
   
   const response = await runWithRetry(() => genAI.models.generateContent({ 
