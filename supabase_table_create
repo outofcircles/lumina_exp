@@ -1,0 +1,46 @@
+-- 1. Table for User Quotas (Billing Protection)
+create table user_profiles (
+  id uuid references auth.users not null primary key,
+  daily_usage int default 0,
+  last_reset date default current_date
+);
+
+-- 2. Table for Shared Stories (The Library)
+-- type CHECK constraint added: prevents invalid mode values being stored
+create table shared_stories (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamptz default now(),
+  created_by uuid references auth.users,
+  type text CHECK (type IN ('STORIES', 'CONCEPTS', 'PHILOSOPHIES')) NOT NULL,
+  item_data jsonb,
+  content jsonb,
+  metadata jsonb
+);
+
+-- 3. Table for Caching API responses (Speed up common requests)
+create table cached_content (
+  hash text primary key,
+  created_at timestamptz default now(),
+  content jsonb,
+  type text
+);
+
+-- 4. Security Policies (Row Level Security)
+
+-- shared_stories: public read, users own their rows
+alter table shared_stories enable row level security;
+create policy "Public read access" on shared_stories for select using (true);
+create policy "Users can insert their own" on shared_stories for insert with check (auth.uid() = created_by);
+create policy "Users can delete their own" on shared_stories for delete using (auth.uid() = created_by);
+
+-- user_profiles: users can only see and update their own row
+alter table user_profiles enable row level security;
+create policy "Users can read own profile" on user_profiles for select using (auth.uid() = id);
+create policy "Users can update own profile" on user_profiles for update using (auth.uid() = id);
+create policy "Users can insert own profile" on user_profiles for insert with check (auth.uid() = id);
+
+-- cached_content: authenticated read, no direct client writes (server-side only via service key)
+alter table cached_content enable row level security;
+create policy "Authenticated read access" on cached_content for select using (auth.role() = 'authenticated');
+-- No insert/update/delete policy for clients: the serverless function uses SUPABASE_KEY (service role)
+-- which bypasses RLS, so cache writes remain server-side only.
