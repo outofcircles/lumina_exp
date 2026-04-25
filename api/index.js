@@ -397,36 +397,40 @@ Historical Context: ${research.historicalContext}
     required: ['english', 'hindi', 'illustrationPrompt', 'geography'],
   };
 
-  const prompt = `Write a biographical story about ${profile.name} (${profile.title}) from ${profile.region} (${profile.era}).
+  const prompt = `You are writing a biographical story about ${profile.name} (${profile.title}) from ${profile.region} (${profile.era}).
 
 ${levelBlock}
 
 ${researchBlock}
 
+## ANTI-SLOP RULES (apply to both versions)
+- Every sentence must earn its place. Cut anything that could appear in any biography of any person.
+- NO filler phrases: "tectonic plates of history", "ripple through time", "silent symphony", "indelible mark", "journey of a thousand miles", "changed the world forever", "left a lasting legacy". These are banned.
+- NO vague praise. Every claim needs a specific fact behind it. Not "he was brilliant" — say what he discovered and when.
+- Quotes: only include a quote if it appears in the research block above. If uncertain of source, do not use it. Never invent quotes.
+- The narrator voice must be sustained throughout ALL sections — not just the opening paragraph. If the narrator is García Márquez, the LEGACY section must still feel like García Márquez, not a Wikipedia summary.
+- The valueReflection must be a short, personal, felt insight — NOT a recap of what just happened. Write it as if speaking directly to the reader about what this person's life means for their own.
+
 ## ENGLISH VERSION
 Narrator voice: ${englishStyleName} — ${englishStyleDesc}
 Length: approximately ${wordCount} words
-CRITICAL: Write in STANDARD English. No dialect, phonetic spelling, or slang.
-CRITICAL: Use only verified facts from the research block above. If a quote is provided, include it verbatim with attribution.
+Write in STANDARD English. No dialect or phonetic spelling.
 
-Narrative arc (mandatory):
-1. HOOK: Open in media res — a single vivid scene that drops the reader into a defining moment
-2. ROOTS: Early life, formative experiences that explain who they became
-3. CRUCIBLE: The central struggle or turning point — make it specific, not generic
-4. BREAKTHROUGH: How they upheld the values of ${profile.values.join(', ')} when it mattered most
-5. LEGACY: How their contribution changed the world — with specific impact, not vague praise
+Narrative arc:
+1. HOOK (introduction field): Drop the reader into one specific, sensory scene — a real moment from this person's life. Name the place, time, what they were doing. Make it feel like we are there.
+2. ROOTS + CRUCIBLE + BREAKTHROUGH (mainBody field): Weave these together as continuous prose, not labeled sections. Show the formative experiences, the specific obstacle they faced, and the moment they broke through — using named events, dates, and places from the research. Show how ${profile.values.join(', ')} manifested in a concrete decision or action, not as abstract virtues.
+3. LEGACY + VALUE REFLECTION (valueReflection field): Two short paragraphs. First: what specifically changed because of this person — name the laws, movements, inventions, or people they influenced. Second: a direct, felt reflection for the reader on what this life teaches us today.
 
 ## HINDI VERSION
 Narrator voice: ${hindiStyleName} — ${hindiStyleDesc}
 Length: approximately ${wordCount} words
-CRITICAL: Write an INDEPENDENT retelling in standard Hindi. Do NOT translate the English story.
-Same 5-act narrative arc as English version.
+Write an INDEPENDENT retelling in standard, literary Hindi (not translated English). Same structure as above. The Hindi version should feel native to its narrator voice — not a translation.
 
 ## ADDITIONAL FIELDS
-- illustrationPrompt: A vivid, specific scene from the story for illustration (artistic children's book style)
+- illustrationPrompt: Describe one specific scene from the story — name the setting, the person's posture/expression, what surrounds them. Artistic children's book style, warm colors.
 - geography.countryName: The country most associated with ${profile.name}
-- geography.funFact: One surprising, specific geographic or cultural fact about that region
-- geography.mapPrompt: Prompt for an illustrated educational map of the region`;
+- geography.funFact: One surprising, concrete geographic or cultural fact about that country that most people don't know
+- geography.mapPrompt: Prompt for an illustrated educational map highlighting the key locations from this person's life`;
 
   const result = await generateText(prompt, schema, 0.72);
   result.englishStyle = englishStyleName;
@@ -486,7 +490,7 @@ Real-World Applications: ${research.realWorldApplications.join(' | ')}
     required: ['title', 'conceptDefinition', 'humanStory', 'experimentOrActivity', 'sources', 'illustrationPrompt'],
   };
 
-  const prompt = `Write a science entry about: ${item.name} (${item.field}, ${item.era}).
+  const prompt = `You are writing a science entry about: ${item.name} (${item.field}, ${item.era}).
 
 ${levelBlock}
 
@@ -495,20 +499,24 @@ ${narratorBlock}
 ${researchBlock}
 
 Length: approximately ${wordCount} words total across all sections.
-CRITICAL: Use verified facts from research context. Name specific scientists, dates, and places.
+
+## ANTI-SLOP RULES
+- No filler sentences. Every sentence must contain a fact, an image, or a question — never all three vague adjectives in a row.
+- Banned phrases: "changed the world", "revolutionary breakthrough", "mankind would never be the same", "paved the way", "opened new doors". Cut them.
+- Name the scientists. Name the year. Name the city. Name the specific experiment or paper. Vague references to "researchers" or "scientists of the era" are not allowed.
+- The narrator voice must be consistent from first sentence to last.
 
 Content structure:
-1. CONCEPT DEFINITION (~15% of words): Explain what this is in simple, accurate terms. Use one powerful analogy.
-2. HUMAN STORY (~50% of words): The narrative of discovery. Include:
-   - The specific moment/problem that triggered the research
-   - Named scientists and their roles
-   - A setback or failed experiment on the path to success
-   - The moment of breakthrough (specific scene if possible)
-3. TRY THIS / THINK ABOUT THIS (~20% of words): A hands-on experiment OR a thought experiment the reader can do right now. Must be doable with household items or pure imagination.
-4. REAL-WORLD IMPACT (~15% of words): Name 3-5 specific technologies/applications that exist because of this discovery. Say HOW they work, not just that they exist.
+1. CONCEPT DEFINITION (conceptDefinition field, ~15% of words): Explain what this is in one powerful analogy that a child could picture. Then give the precise scientific definition in one sentence.
+2. HUMAN STORY (humanStory field, ~50% of words): Write this as narrative prose, not bullet points. Show:
+   - The specific problem or observation that triggered the discovery — with a named person in a named place
+   - One failed attempt or wrong turn that makes the eventual breakthrough feel earned
+   - The breakthrough moment itself — as a scene, not a summary
+3. TRY THIS (experimentOrActivity field, ~20% of words): One hands-on experiment using household items, OR one thought experiment. Give exact steps. Make it feel like an invitation, not an instruction manual.
+4. REAL-WORLD IMPACT woven into humanStory or as a closing paragraph: Name 3-5 specific technologies. For each, say in one sentence HOW the discovery made it possible — not just that it exists.
 
-sources: Include Wikipedia URL + 2-3 real references (books, educational sites). DO NOT invent URLs.
-illustrationPrompt: A visually striking scene showing the moment of discovery or a key experiment.`;
+sources: Only include URLs you are confident exist (Wikipedia article, Khan Academy, BBC, known textbooks). DO NOT invent URLs. If unsure, name the source without a URL.
+illustrationPrompt: Describe one specific scene — the scientist's face, the equipment around them, the moment of realisation. Warm, detailed, children's book illustration style.`;
 
   const result = await generateText(prompt, schema, 0.72);
   if (research) result.research = research;
@@ -562,7 +570,7 @@ Societal Impacts: ${research.societalImpacts.join(' | ')}
     required: ['title', 'coreIdeaExplanation', 'historicalEpisode', 'modernrelevance', 'sources', 'illustrationPrompt'],
   };
 
-  const prompt = `Write a philosophy entry about: ${item.name} (${item.origin}, ${item.era}). Core idea: ${item.coreIdea}.
+  const prompt = `You are writing a philosophy entry about: ${item.name} (${item.origin}, ${item.era}). Core idea: ${item.coreIdea}.
 
 ${levelBlock}
 
@@ -571,16 +579,21 @@ ${narratorBlock}
 ${researchBlock}
 
 Length: approximately ${wordCount} words total.
-CRITICAL: Use verified facts. Name specific thinkers, texts, dates, and institutions changed by this idea.
+
+## ANTI-SLOP RULES
+- Philosophy entries fail when they stay abstract. Every idea must be grounded in a specific person making a specific choice in a specific year.
+- Banned phrases: "timeless wisdom", "humanity has always wondered", "this idea transcends cultures", "at its core", "in today's fast-paced world". Cut them.
+- Do not define the philosophy in the first sentence. Start with a scene or a person.
+- The narrator voice must hold through the entire entry. A Rumi-style narrator does not suddenly sound like a textbook in section 3.
 
 Content structure:
-1. CORE IDEA (~20% of words): Explain the philosophy clearly. Use a vivid parable, story, or thought experiment — not abstract definitions alone.
-2. HISTORICAL EPISODE (~40% of words): A SPECIFIC moment when this idea was born, tested, or dramatically applied. Name the people, place, year. Show the stakes.
-3. HOW IT MOVED HUMANITY FORWARD (~30% of words): Tangible societal shifts caused by this idea. Name real laws, governments, movements, or institutions it shaped. Avoid "it changed how people think" — say HOW specifically.
-4. MODERN RELEVANCE (~10% of words): One contemporary situation where this idea is urgently needed or actively applied.
+1. CORE IDEA (coreIdeaExplanation field, ~20% of words): Open with a short parable, a real historical anecdote, or a thought experiment that makes the idea viscerally clear — before naming it. Then name and define it in one sentence.
+2. HISTORICAL EPISODE (historicalEpisode field, ~40% of words): One specific moment — a trial, a debate, a text being written, a law being passed — where this idea was born or tested. Name the person, place, year, and what was at stake. Write it as a scene with tension, not as a summary.
+3. HOW IT MOVED HUMANITY FORWARD (woven into historicalEpisode or as closing prose in modernrelevance field): Name real institutions, laws, or movements this idea shaped. For each, say specifically how the idea caused the change — not just that it "influenced" them.
+4. MODERN RELEVANCE (modernrelevance field, ~10% of words): One concrete, current situation where this idea is either urgently needed or being actively applied — name a country, movement, or event from the last 20 years.
 
-sources: Stanford Encyclopedia of Philosophy or Wikipedia URL + 2-3 real references.
-illustrationPrompt: A vivid historical scene capturing the moment or setting of the philosophy.`;
+sources: Stanford Encyclopedia of Philosophy URL or Wikipedia + 2-3 real references. Only include URLs you are confident exist.
+illustrationPrompt: A specific historical scene — name the setting, the figures present, what they are doing. Warm, detailed, children's book illustration style.`;
 
   const result = await generateText(prompt, schema, 0.72);
   if (research) result.research = research;
